@@ -1,0 +1,37 @@
+# Build / IDE
+**/bin/
+**/obj/
+**/.vs/
+*.user
+*.suo
+
+# Local databases
+**/gitshare.db
+**/gitshare.db-*
+
+# Secrets & local config
+.env
+.env.local
+**/.env
+!**/.env.example
+!**/.env.*.example
+appsettings.*.local.json
+secrets.json
+
+# Node
+**/node_modules/
+**/dist/
+**/.vite/
+*.tsbuildinfo
+.vercel/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Reports & local artifacts
+scripts/regression-report.json
+artifacts/
+.build-check/
+*-verify.json
+/*-profile.json

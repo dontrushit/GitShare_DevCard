@@ -1,0 +1,327 @@
+﻿{
+    "Username":  "alexellis",
+    "AvatarUrl":  "https://avatars.githubusercontent.com/u/6358735?v=4",
+    "Bio":  "Founder @openfaas @inlets @self-actuated ",
+    "Location":  "United Kingdom",
+    "PublicRepos":  454,
+    "TotalStars":  23229,
+    "TotalForks":  2430,
+    "ContributionRatio":  0.71,
+    "OwnRepositoryCount":  321,
+    "ForkedRepositoryCount":  133,
+    "SmallPetProjects":  315,
+    "MediumProjects":  4,
+    "ProductionScaleProjects":  2,
+    "AuditData":  {
+                      "Projects":  [
+                                       {
+                                           "RepoName":  "k3sup",
+                                           "ProjectClass":  "Utility / Automation",
+                                           "Framework":  "Go",
+                                           "LayoutType":  "Go Module / CLI",
+                                           "KeyFiles":  [
+                                                            "go.mod",
+                                                            "go.sum",
+                                                            "main.go",
+                                                            "get-config.go",
+                                                            "get.go",
+                                                            "get_pro.go",
+                                                            "install.go"
+                                                        ],
+                                           "TechnicalDebt":  "Utility / automation: отсутствие слоёв данных и DI — норма. Оценивайте модульность скрипта и конфигурации.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "В k3sup: как вы разделяете конфигурацию, секреты и исполняемую логику в утилите?",
+                                           "Pros":  [
+                                                        "Утилита или пример: компактная структура без enterprise-монолита.",
+                                                        "Точки входа: go.mod, go.sum."
+                                                    ],
+                                           "Cons":  [
+
+                                                    ]
+                                       },
+                                       {
+                                           "RepoName":  "arkade",
+                                           "ProjectClass":  "Utility / Automation",
+                                           "Framework":  "DevOps (K8s/Docker)",
+                                           "LayoutType":  "Container / Deployment",
+                                           "KeyFiles":  [
+                                                            "docker-compose.yml",
+                                                            ".goreleaser.yaml",
+                                                            ".golangci.yaml"
+                                                        ],
+                                           "TechnicalDebt":  "Utility / automation: отсутствие слоёв данных и DI — норма. Оценивайте модульность скрипта и конфигурации.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "В arkade: как вы разделяете конфигурацию, секреты и исполняемую логику в утилите?",
+                                           "Pros":  [
+                                                        "Декларативные манифесты и скрипты автоматизации (YAML/Docker/Ansible) в дереве.",
+                                                        "DevOps-репозиторий: инфраструктура как код, без ожидания OOP-слоёв."
+                                                    ],
+                                           "Cons":  [
+
+                                                    ]
+                                       },
+                                       {
+                                           "RepoName":  "derek",
+                                           "ProjectClass":  "Utility / Automation",
+                                           "Framework":  "Terraform",
+                                           "LayoutType":  "Infrastructure as Code",
+                                           "KeyFiles":  [
+                                                            "main.tf",
+                                                            "output.tf",
+                                                            "variables.tf"
+                                                        ],
+                                           "TechnicalDebt":  "Utility / automation: отсутствие слоёв данных и DI — норма. Оценивайте модульность скрипта и конфигурации.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "В derek: как вы разделяете конфигурацию, секреты и исполняемую логику в утилите?",
+                                           "Pros":  [
+                                                        "Декларативные манифесты и скрипты автоматизации (YAML/Docker/Ansible) в дереве.",
+                                                        "DevOps-репозиторий: инфраструктура как код, без ожидания OOP-слоёв."
+                                                    ],
+                                           "Cons":  [
+
+                                                    ]
+                                       },
+                                       {
+                                           "RepoName":  "k8s-on-raspbian",
+                                           "ProjectClass":  "DocOps / Knowledge Base",
+                                           "Framework":  "не определён (по сигнатурам)",
+                                           "LayoutType":  "Documentation",
+                                           "KeyFiles":  [
+                                                            "add-a-reader-s-cluster.md",
+                                                            "PULL_REQUEST_TEMPLATE.md",
+                                                            "CONTRIBUTING.md",
+                                                            "bug_report.md",
+                                                            ".DEREK.yml",
+                                                            "README.md",
+                                                            "GUIDE.md",
+                                                            "prep.sh"
+                                                        ],
+                                           "TechnicalDebt":  "Информационный репозиторий / материалы выступлений. Архитектурный анализ неприменим.",
+                                           "DebtSeverity":  "NONE",
+                                           "InterviewTrapQuestion":  "Какие основные шаги необходимы для развертывания Kubernetes на Raspberry Pi с использованием kubeadm?",
+                                           "Pros":  [
+                                                        "Материалы структурированы: README и сопутствующие файлы легко читаются.",
+                                                        "Ключевые артефакты (add-a-reader-s-cluster.md, PULL_REQUEST_TEMPLATE.md) выделены в паспорте."
+                                                    ],
+                                           "Cons":  [
+
+                                                    ]
+                                       }
+                                   ],
+                      "CoreEngineeringFocus":  "Сильный акцент на Go, DevOps и Kubernetes, с опытом в автоматизации и инфраструктуре как коде.",
+                      "GitFormatStandard":  "Descriptive / Non-standard",
+                      "ExperienceProfile":  "55% коммитов в рабочее время, 45% в нерабочее время, что указывает на активность вне стандартного графика.",
+                      "OpenSourceImpact":  "Значительное влияние на open-source через проекты, такие как OpenFaaS, k3sup и arkade, с общей популярностью более 23 тысяч звёзд."
+                  },
+    "ActivityTelemetry":  {
+                              "RecentCommitMessages":  [
+                                                           "Note ce overlap commands",
+                                                           "Remove one more note",
+                                                           "Correct k3sup pro to k3sup-pro command",
+                                                           "Bump go.mod",
+                                                           "Bump to Go 1.26",
+                                                           "Updates on asking for sponsors",
+                                                           "Add ascii diagram",
+                                                           "Make intro a link",
+                                                           "Note on CE EULA",
+                                                           "Add EULA for K3sup Pro (ONLY)",
+                                                           "Update LICENSE",
+                                                           "Update README.md",
+                                                           "Show alternative installation approach",
+                                                           "Add PRO flag/switch to k3sup installer",
+                                                           "Add command to obtain k3sup pro",
+                                                           "Initial pro readme",
+                                                           "Fixes in README",
+                                                           "Update .DEREK.yml",
+                                                           "Fix Makefile for Linux target when run on an Arm64 Mac",
+                                                           "Add get-config command",
+                                                           "Add --merge flag to k3sup plan",
+                                                           "Update vendor",
+                                                           "Look for default service account before marking cluster ready",
+                                                           "Cancel concurrent builds",
+                                                           "Create request-a-feature.md",
+                                                           "Update issue templates",
+                                                           "Update Go version, GitHub Actions and vendor",
+                                                           "Support ssh-key for k3sup plan",
+                                                           "Update to message in get.sh",
+                                                           "Update support message",
+                                                           "Update example with three hosts",
+                                                           "fix example and make it valid JSON",
+                                                           "Add --no-extra flag to join command",
+                                                           "Update go-execute and cobra",
+                                                           "Bump golang.org/x/crypto from 0.13.0 to 0.17.0",
+                                                           "Add --server-k3s-extra-args for disabling traefik etc",
+                                                           "Add notes to README for k3sup plan",
+                                                           "Use node-token from an env-var instead of a file",
+                                                           "Use fstail directly instead of via go replace",
+                                                           "Fix amp and update go.mod"
+                                                       ],
+                              "CommitsInWorkingHours":  88,
+                              "CommitsInOffHours":  72,
+                              "ExternalPullRequests":  [
+
+                                                       ],
+                              "TotalStars":  13668,
+                              "TopStarredRepos":  [
+                                                      "k3sup (7384★)",
+                                                      "arkade (4580★)",
+                                                      "k8s-on-raspbian (884★)"
+                                                  ]
+                          },
+    "LanguageStack":  [
+                          {
+                              "Language":  "Go",
+                              "Percentage":  29.7
+                          },
+                          {
+                              "Language":  "JavaScript",
+                              "Percentage":  25.4
+                          },
+                          {
+                              "Language":  "Python",
+                              "Percentage":  18
+                          },
+                          {
+                              "Language":  "Shell",
+                              "Percentage":  8.2
+                          },
+                          {
+                              "Language":  "HTML",
+                              "Percentage":  3.9
+                          },
+                          {
+                              "Language":  "C#",
+                              "Percentage":  3.5
+                          },
+                          {
+                              "Language":  "Dockerfile",
+                              "Percentage":  3.5
+                          },
+                          {
+                              "Language":  "Ruby",
+                              "Percentage":  2.7
+                          },
+                          {
+                              "Language":  "Makefile",
+                              "Percentage":  1.2
+                          },
+                          {
+                              "Language":  "TypeScript",
+                              "Percentage":  0.8
+                          },
+                          {
+                              "Language":  "Java",
+                              "Percentage":  0.8
+                          },
+                          {
+                              "Language":  "C++",
+                              "Percentage":  0.8
+                          },
+                          {
+                              "Language":  "HCL",
+                              "Percentage":  0.4
+                          },
+                          {
+                              "Language":  "PHP",
+                              "Percentage":  0.4
+                          },
+                          {
+                              "Language":  "Jupyter Notebook",
+                              "Percentage":  0.4
+                          },
+                          {
+                              "Language":  "C",
+                              "Percentage":  0.4
+                          }
+                      ],
+    "CommitRhythm":  [
+                         {
+                             "Hour":  0,
+                             "CommitCount":  1
+                         },
+                         {
+                             "Hour":  2,
+                             "CommitCount":  1
+                         },
+                         {
+                             "Hour":  7,
+                             "CommitCount":  2
+                         },
+                         {
+                             "Hour":  8,
+                             "CommitCount":  1
+                         },
+                         {
+                             "Hour":  9,
+                             "CommitCount":  1
+                         },
+                         {
+                             "Hour":  10,
+                             "CommitCount":  2
+                         },
+                         {
+                             "Hour":  11,
+                             "CommitCount":  4
+                         },
+                         {
+                             "Hour":  12,
+                             "CommitCount":  1
+                         },
+                         {
+                             "Hour":  15,
+                             "CommitCount":  2
+                         },
+                         {
+                             "Hour":  17,
+                             "CommitCount":  1
+                         },
+                         {
+                             "Hour":  20,
+                             "CommitCount":  3
+                         },
+                         {
+                             "Hour":  22,
+                             "CommitCount":  1
+                         }
+                     ],
+    "TopRepositories":  [
+                            {
+                                "Name":  "k3sup",
+                                "Description":  "bootstrap K3s over SSH in \u003c 60s 🚀",
+                                "Stars":  7384,
+                                "Language":  "Go",
+                                "Url":  "https://github.com/alexellis/k3sup"
+                            },
+                            {
+                                "Name":  "arkade",
+                                "Description":  "Open Source Marketplace For Developer Tools",
+                                "Stars":  4580,
+                                "Language":  "Go",
+                                "Url":  "https://github.com/alexellis/arkade"
+                            },
+                            {
+                                "Name":  "derek",
+                                "Description":  "Reduce maintainer fatigue by automating GitHub",
+                                "Stars":  820,
+                                "Language":  "Go",
+                                "Url":  "https://github.com/alexellis/derek"
+                            },
+                            {
+                                "Name":  "k8s-on-raspbian",
+                                "Description":  "Kubernetes on Raspbian (Raspberry Pi)",
+                                "Stars":  884,
+                                "Language":  "Shell",
+                                "Url":  "https://github.com/alexellis/k8s-on-raspbian"
+                            }
+                        ],
+    "ProgrammerLevel":  {
+                            "Code":  "senior",
+                            "Title":  "Сеньор",
+                            "Score":  100,
+                            "RawScore":  100,
+                            "SignalConfidence":  1,
+                            "IsLowConfidence":  false,
+                            "Rationale":  "⭐ 23229 на репозиториях; топ-репо до 7384★; много собственных pet/utility репо; 2 крупных репо; 16 языков (Go, JavaScript, Python)",
+                            "Disclaimer":  "По открытому GitHub-портфелю (топ-репо и аудит), не по должности в компании."
+                        }
+}

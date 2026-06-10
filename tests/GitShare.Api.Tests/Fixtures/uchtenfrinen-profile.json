@@ -1,0 +1,151 @@
+﻿{
+    "Username":  "uchtenfrinen",
+    "AvatarUrl":  "https://avatars.githubusercontent.com/u/79045216?v=4",
+    "Bio":  "",
+    "Location":  "Belarus",
+    "PublicRepos":  4,
+    "TotalStars":  0,
+    "TotalForks":  0,
+    "ContributionRatio":  1,
+    "OwnRepositoryCount":  4,
+    "ForkedRepositoryCount":  0,
+    "SmallPetProjects":  4,
+    "MediumProjects":  0,
+    "ProductionScaleProjects":  0,
+    "AuditData":  {
+                      "Projects":  [
+                                       {
+                                           "RepoName":  "Task-Service",
+                                           "ProjectClass":  "Utility / Automation",
+                                           "Framework":  ".NET, Console",
+                                           "LayoutType":  "Console Utility",
+                                           "KeyFiles":  [
+                                                            "Program.cs",
+                                                            "TaskService.csproj"
+                                                        ],
+                                           "TechnicalDebt":  "Utility / automation: data-слои и DI отсутствуют — для CLI и скриптов типично. Структура опирается на модули и конфигурацию.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "Как бы вы организовали обработку ошибок и логирование в консольной утилите?",
+                                           "Pros":  [
+                                                        "Обработка ошибок доступа к данным: try/catch в Program.cs (проверено в коде).",
+                                                        "Асинхронные методы (async/await) в выборке ключевых файлов — меньше блокировки UI-потока.",
+                                                        "Папка Services/ — прикладная логика отделена от UI-слоя (дерево)."
+                                                    ],
+                                           "Cons":  [
+
+                                                    ]
+                                       },
+                                       {
+                                           "RepoName":  "BankingSystem",
+                                           "ProjectClass":  "Utility / Automation",
+                                           "Framework":  ".NET, Console",
+                                           "LayoutType":  "Console Utility",
+                                           "KeyFiles":  [
+                                                            "Program.cs",
+                                                            "Ppoje.csproj"
+                                                        ],
+                                           "TechnicalDebt":  "Utility / automation: data-слои и DI отсутствуют — для CLI и скриптов типично. Структура опирается на модули и конфигурацию.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "Какие подходы вы бы использовали для управления состоянием в консольном приложении?",
+                                           "Pros":  [
+                                                        "Утилита или пример: компактная структура без enterprise-монолита.",
+                                                        "Точки входа: Program.cs, Ppoje.csproj."
+                                                    ],
+                                           "Cons":  [
+
+                                                    ]
+                                       },
+                                       {
+                                           "RepoName":  "ConsoleSnakeGame",
+                                           "ProjectClass":  "Utility / Automation",
+                                           "Framework":  ".NET, Console",
+                                           "LayoutType":  "Console Utility",
+                                           "KeyFiles":  [
+                                                            "Program.cs",
+                                                            "SnakeGame.csproj"
+                                                        ],
+                                           "TechnicalDebt":  "Utility / automation: data-слои и DI отсутствуют — для CLI и скриптов типично. Структура опирается на модули и конфигурацию.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "Как бы вы реализовали сохранение и загрузку прогресса в консольной игре?",
+                                           "Pros":  [
+                                                        "Небольшая консольная игра/демо: Program.cs и игровая логика без лишних слоёв.",
+                                                        "Игровой контур: Program.cs, SnakeGame.csproj."
+                                                    ],
+                                           "Cons":  [
+
+                                                    ]
+                                       }
+                                   ],
+                      "CoreEngineeringFocus":  "C# и разработка консольных утилит.",
+                      "GitFormatStandard":  "Descriptive / Non-standard",
+                      "ExperienceProfile":  "100% коммитов в рабочее время, что указывает на профессиональное использование.",
+                      "OpenSourceImpact":  "No significant open-source footprint"
+                  },
+    "ActivityTelemetry":  {
+                              "RecentCommitMessages":  [
+                                                           "доделана основная логика, пофикшено часть кода",
+                                                           "update. added: search, sorting, ai-chat in every added task",
+                                                           "Добавьте файлы проекта.",
+                                                           "Добавить .gitattributes и .gitignore.",
+                                                           "That might be the last version"
+                                                       ],
+                              "CommitsInWorkingHours":  6,
+                              "CommitsInOffHours":  0,
+                              "ExternalPullRequests":  [
+
+                                                       ],
+                              "TotalStars":  0,
+                              "TopStarredRepos":  [
+
+                                                  ]
+                          },
+    "LanguageStack":  [
+                          {
+                              "Language":  "C#",
+                              "Percentage":  100
+                          }
+                      ],
+    "CommitRhythm":  [
+                         {
+                             "Hour":  12,
+                             "CommitCount":  1
+                         },
+                         {
+                             "Hour":  13,
+                             "CommitCount":  3
+                         }
+                     ],
+    "TopRepositories":  [
+                            {
+                                "Name":  "Task-Service",
+                                "Description":  "in progress ",
+                                "Stars":  0,
+                                "Language":  "C#",
+                                "Url":  "https://github.com/uchtenfrinen/Task-Service"
+                            },
+                            {
+                                "Name":  "BankingSystem",
+                                "Description":  "Just using OOP",
+                                "Stars":  0,
+                                "Language":  "C#",
+                                "Url":  "https://github.com/uchtenfrinen/BankingSystem"
+                            },
+                            {
+                                "Name":  "ConsoleSnakeGame",
+                                "Description":  "Snake game in console",
+                                "Stars":  0,
+                                "Language":  "C#",
+                                "Url":  "https://github.com/uchtenfrinen/ConsoleSnakeGame"
+                            }
+                        ],
+    "ProgrammerLevel":  {
+                            "Code":  "trainee",
+                            "Title":  "Стажёр",
+                            "Score":  19,
+                            "RawScore":  32,
+                            "SignalConfidence":  0.6,
+                            "IsLowConfidence":  true,
+                            "Rationale":  "слабый сигнал портфеля (×0,6: мало собственных репо, мало звёзд, один язык в стеке); топ-репо до 0★; аудит: зрелые сигнатуры; 2 стека (Console/.NET, .NET)",
+                            "Disclaimer":  "По открытому GitHub-портфелю (топ-репо и аудит), не по должности в компании."
+                        }
+}
