@@ -1,0 +1,132 @@
+{
+  "apiBaseUrl": "http://127.0.0.1:5188",
+  "forceRefresh": true,
+  "profiles": [
+    {
+      "username": "uchtenfrinen",
+      "cohort": "juniors",
+      "wave": 1,
+      "anchor": true,
+      "levelIn": ["trainee"],
+      "notes": "C#/console учебные репо, 0★ — trainee без prod/PR/★≥5",
+      "projectRules": [
+        { "repo": "Task-Service", "debtMustContain": ["Services"] }
+      ]
+    },
+    {
+      "username": "melsomino",
+      "cohort": "juniors",
+      "wave": 1,
+      "anchor": true,
+      "levelIn": ["trainee"],
+      "notes": "Михаил Власов: академия, Delphi/C/Java, без коммерческого масштаба"
+    },
+    {
+      "username": "YuryS9",
+      "cohort": "juniors",
+      "wave": 1,
+      "anchor": false,
+      "levelIn": ["trainee"],
+      "notes": "Учебные лабораторные, нет звёзд и форков"
+    },
+    {
+      "username": "prime31",
+      "cohort": "gamedev-mobile",
+      "wave": 2,
+      "anchor": true,
+      "levelIn": ["middle", "senior"],
+      "notes": "Unity/C# ветеран, плагины и утилиты — Middle+ / Senior"
+    },
+    {
+      "username": "JakeWharton",
+      "cohort": "gamedev-mobile",
+      "wave": 2,
+      "anchor": true,
+      "levelIn": ["principal", "lead"],
+      "notes": "Android-легенда (Java/Kotlin), огромный OSS-след"
+    },
+    {
+      "username": "ashfurrow",
+      "cohort": "gamedev-mobile",
+      "wave": 2,
+      "anchor": true,
+      "levelIn": ["senior", "lead"],
+      "notes": "iOS/Swift OSS, без enterprise .NET метрик"
+    },
+    {
+      "username": "geerlingguy",
+      "cohort": "devops-infra",
+      "wave": 3,
+      "anchor": true,
+      "levelIn": ["senior", "lead"],
+      "notes": "Ansible/YAML, тысячи ★ — Senior/Tech Lead DevOps, не веб-сеньор"
+    },
+    {
+      "username": "alexellis",
+      "cohort": "devops-infra",
+      "wave": 3,
+      "anchor": true,
+      "levelIn": ["senior", "lead"],
+      "notes": "OpenFaaS, K8s, Go — Senior/Tech Lead",
+      "projectRules": [
+        { "repo": "derek", "frameworkMustNotContain": ["Terraform"], "classMustNotBe": "QA / Testing" },
+        { "repo": "arkade", "frameworkMustNotContain": ["Terraform"], "classMustNotBe": "QA / Testing" }
+      ]
+    },
+    {
+      "username": "jessfraz",
+      "cohort": "devops-infra",
+      "wave": 3,
+      "anchor": true,
+      "levelIn": ["senior", "lead"],
+      "notes": "Docker, Go, системные утилиты"
+    },
+    {
+      "username": "davidfowl",
+      "cohort": "enterprise",
+      "wave": 4,
+      "anchor": true,
+      "levelIn": ["principal", "lead"],
+      "notes": "Архитектор .NET, async/runtime — Principal"
+    },
+    {
+      "username": "EgorBo",
+      "cohort": "enterprise",
+      "wave": 4,
+      "anchor": true,
+      "levelIn": ["senior", "lead", "principal"],
+      "notes": ".NET runtime / JIT perf — Senior / Tech Lead"
+    },
+    {
+      "username": "tiangolo",
+      "cohort": "enterprise",
+      "wave": 4,
+      "anchor": true,
+      "levelIn": ["principal", "lead"],
+      "notes": "FastAPI, Python — Principal"
+    },
+    {
+      "username": "taylorotwell",
+      "cohort": "enterprise",
+      "wave": 4,
+      "anchor": true,
+      "levelIn": ["principal", "lead"],
+      "notes": "Laravel — Principal"
+    },
+    {
+      "username": "octocat",
+      "cohort": "edge-cases",
+      "wave": 5,
+      "anchor": true,
+      "levelIn": ["trainee", "junior", "middle", "senior"],
+      "notes": "Демо-профиль GitHub"
+    },
+    {
+      "username": "this-user-definitely-does-not-exist-404",
+      "cohort": "edge-cases",
+      "wave": 5,
+      "anchor": true,
+      "expectApiError": true
+    }
+  ]
+}

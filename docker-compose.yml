@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gitshare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gitshare}
+      POSTGRES_DB: gitshare
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitshare -d gitshare"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=gitshare;Username=gitshare;Password=${POSTGRES_PASSWORD:-gitshare}
+      Database__ApplyMigrationsOnStartup: "true"
+      Cors__AllowedOrigins__0: ${CLIENT_ORIGIN:-http://localhost:8081}
+      GitHub__Token: ${GITHUB_TOKEN:-}
+      AI__ApiKey: ${AI_API_KEY:-}
+      AI__ModelId: ${AI_MODEL_ID:-gpt-4o}
+      Cache__ProfileTtlHours: "24"
+      RateLimiting__ProfilePermitLimit: "30"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

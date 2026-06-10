@@ -1,0 +1,11 @@
+@GitShare.Api_HostAddress = http://localhost:5188
+
+GET {{GitShare.Api_HostAddress}}/api/profile/octocat
+Accept: application/json
+
+###
+
+GET {{GitShare.Api_HostAddress}}/api/profile/this-user-definitely-does-not-exist-xyz123
+Accept: application/json
+
+###
