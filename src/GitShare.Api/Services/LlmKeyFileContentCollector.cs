@@ -3,7 +3,7 @@ using GitShare.Api.Models;
 namespace GitShare.Api.Services;
 
 /// <summary>
-/// Скачивает содержимое ключевых файлов Production-репозиториев для промпта LLM.
+/// Скачивает содержимое ключевых файлов (Production и Utility) для промпта LLM.
 /// </summary>
 public sealed class LlmKeyFileContentCollector(GitHubRawContentFetcher rawFetcher)
 {
@@ -15,19 +15,31 @@ public sealed class LlmKeyFileContentCollector(GitHubRawContentFetcher rawFetche
         CancellationToken cancellationToken = default)
     {
         var projectClass = ProjectClassClassifier.Classify(repoName, signatureManifest);
-        projectClass = ProjectClassProsCons.ResolveEffectiveClass(projectClass, repoName, signatureManifest);
+        var selection = LlmEvidenceFileSelector.Select(repoName, blobPaths, signatureManifest, projectClass);
 
-        var paths = LlmEvidenceFileSelector.SelectPaths(repoName, blobPaths, signatureManifest, projectClass);
-        if (paths.Count == 0)
+        if (selection.SourcePaths.Count == 0 && selection.InfraPaths.Count == 0)
         {
             return [];
         }
 
-        return await rawFetcher.FetchManyAsync(
+        var sourceTask = rawFetcher.FetchManyAsync(
             owner,
             repoName,
-            paths,
+            selection.SourcePaths,
             LlmEvidenceFileSelector.MaxCharsPerFile,
             cancellationToken);
+
+        var infraTask = rawFetcher.FetchManyAsync(
+            owner,
+            repoName,
+            selection.InfraPaths,
+            LlmEvidenceFileSelector.MaxCharsPerInfraFile,
+            cancellationToken);
+
+        await Task.WhenAll(sourceTask, infraTask);
+
+        return (await sourceTask)
+            .Concat(await infraTask)
+            .ToList();
     }
 }

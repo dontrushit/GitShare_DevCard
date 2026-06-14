@@ -137,12 +137,10 @@ internal static class RepositorySelection
         }
 
         var ranked = candidates
-            .Select(r => new
-            {
-                Repo = r,
-                Score = UnityRepositoryHeuristics.AdjustAuditRankScore(
-                    r.Name, r.SizeKb, CalculateAuditRankScore(r))
-            })
+            .Select(r => (
+                Repo: r,
+                Score: UnityRepositoryHeuristics.AdjustAuditRankScore(
+                    r.Name, r.SizeKb, CalculateAuditRankScore(r))))
             .OrderByDescending(x => x.Score)
             .ThenByDescending(x => x.Repo.StargazersCount)
             .ThenByDescending(x => x.Repo.SizeKb)
@@ -150,19 +148,21 @@ internal static class RepositorySelection
 
         // Сначала репозитории с кодом (не awesome/docs blacklist), иначе у мега-OSS в аудит
         // попадают только curated lists (sindresorhus/awesome и т.п.).
-        var codeRepos = ranked
+        var codeCandidates = ranked
             .Where(x => !MatchesAuditBlacklist(x.Repo.Name) &&
                         !IsLikelyDocumentationOrEventRepo(x.Repo.Name, x.Repo.Language, x.Repo.SizeKb))
-            .Select(x => x.Repo)
-            .Take(count)
             .ToList();
+
+        var codeRepos = PickDiverseFromRanked(codeCandidates, count, static x => x.Repo);
+        codeRepos = InjectFlagshipRepositories(codeRepos, ranked.Select(x => x.Repo).ToList(), count);
 
         if (codeRepos.Count < count)
         {
             var filler = ranked
                 .Where(x => !codeRepos.Any(c => c.Name.Equals(x.Repo.Name, StringComparison.OrdinalIgnoreCase)))
                 .Select(x => x.Repo)
-                .Take(count - codeRepos.Count);
+                .Take(count - codeRepos.Count)
+                .ToList();
             codeRepos.AddRange(filler);
         }
 
@@ -180,4 +180,120 @@ internal static class RepositorySelection
 
     private static bool IsProfileReadmeRepository(string username, string repoName) =>
         repoName.Equals(username, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Гарантирует попадание флагманских OSS-репо (unity-typed-scenes, Asteroids, …) в аудит.
+    /// </summary>
+    internal static List<RepoListMetadata> InjectFlagshipRepositories(
+        IReadOnlyList<RepoListMetadata> picked,
+        IReadOnlyList<RepoListMetadata> rankedPool,
+        int count)
+    {
+        if (count <= 0 || rankedPool.Count == 0)
+        {
+            return picked.ToList();
+        }
+
+        var result = picked.ToList();
+        var flagships = rankedPool
+            .Where(r => UnityRepositoryHeuristics.IsFlagshipQualityRepository(r.Name) ||
+                        OssRepositoryHeuristics.IsOssFlagshipRepository(r.Name, r.StargazersCount))
+            .OrderByDescending(r => r.StargazersCount)
+            .Take(Math.Min(2, count))
+            .ToList();
+
+        foreach (var flagship in flagships)
+        {
+            if (result.Any(r => r.Name.Equals(flagship.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            if (result.Count >= count)
+            {
+                var replaceIndex = result
+                    .Select((repo, index) => (repo, index, score: CalculateAuditRankScore(repo)))
+                    .OrderBy(x => x.score)
+                    .First().index;
+                result[replaceIndex] = flagship;
+            }
+            else
+            {
+                result.Add(flagship);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Вес репозитория при агрегации языков: крупные и популярные проекты важнее заметок и pet-репо.
+    /// </summary>
+    public static double LanguageRepoWeight(RepoListMetadata repo)
+    {
+        if (MatchesAuditBlacklist(repo.Name) ||
+            IsLikelyDocumentationOrEventRepo(repo.Name, repo.Language, repo.SizeKb))
+        {
+            return 0.15;
+        }
+
+        var sizeFactor = Math.Log10(Math.Max(repo.SizeKb, 10));
+        var starsFactor = Math.Log10(Math.Max(repo.StargazersCount, 0) + 1);
+        return Math.Max(1.0, sizeFactor * (1.0 + starsFactor * 0.5));
+    }
+
+    public static List<RepoListMetadata> PickDiverseFromRanked<T>(
+        IReadOnlyList<T> ranked,
+        int count,
+        Func<T, RepoListMetadata> selectRepo)
+    {
+        if (ranked.Count == 0 || count <= 0)
+        {
+            return [];
+        }
+
+        var picked = new List<RepoListMetadata>();
+        var usedLanguages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in ranked)
+        {
+            if (picked.Count >= count)
+            {
+                break;
+            }
+
+            var repo = selectRepo(item);
+            var lang = repo.Language ?? string.Empty;
+
+            if (picked.Count == 0 ||
+                string.IsNullOrWhiteSpace(lang) ||
+                !usedLanguages.Contains(lang))
+            {
+                picked.Add(repo);
+                if (!string.IsNullOrWhiteSpace(lang))
+                {
+                    usedLanguages.Add(lang);
+                }
+            }
+        }
+
+        foreach (var item in ranked)
+        {
+            if (picked.Count >= count)
+            {
+                break;
+            }
+
+            var repo = selectRepo(item);
+            if (picked.Any(p => p.Name.Equals(repo.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            picked.Add(repo);
+        }
+
+        return picked;
+    }
+
 }

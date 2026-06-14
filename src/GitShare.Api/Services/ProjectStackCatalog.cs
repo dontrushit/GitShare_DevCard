@@ -31,6 +31,7 @@ internal static class ProjectStackCatalog
         Rule("jest-vitest", 92, HasJsUnitTestRunner, "Jest/Vitest tests", "JavaScript, Unit tests", "Test Suite", true, SelectJsTestKeys),
         Rule("spring", 91, ManifestSignalParser.HasSpringSignalsInTree, "Spring Boot", "Java, Spring Boot", "Spring Boot Application", false, SelectJavaKeys),
         Rule("next", 88, HasNextJs, "Next.js", "Next.js, React", "Web Application (SSR)", false, SelectFrontendKeys),
+        Rule("fullstack-dotnet-react", 89, IsFullStackDotNetReact, "Full-stack (.NET API + SPA)", ".NET, ASP.NET, React", "Web API + SPA", false, SelectFullStackKeys),
         Rule("react", 86, HasReact, "React (Vite/CRA)", "React, TypeScript", "SPA / Frontend", false, SelectFrontendKeys),
         Rule("vue", 86, HasVue, "Vue / Nuxt", "Vue.js", "SPA / Frontend", false, SelectFrontendKeys),
         Rule("angular", 86, HasAngular, "Angular", "Angular, TypeScript", "SPA / Frontend", false, SelectFrontendKeys),
@@ -110,12 +111,33 @@ internal static class ProjectStackCatalog
         }
 
         var primary = matched[0];
-        if (HasRootGoModule(paths) && primary.Id is "terraform" or "k8s-docker")
+        if (primary.Id is "terraform" or "k8s-docker")
         {
-            var goRule = matched.FirstOrDefault(r => r.Id == "go");
-            if (goRule != null)
+            if (HasRootGoModule(paths))
             {
-                primary = goRule;
+                var goRule = matched.FirstOrDefault(r => r.Id == "go");
+                if (goRule != null)
+                {
+                    primary = goRule;
+                }
+            }
+
+            if (primary.Id is "terraform" or "k8s-docker")
+            {
+                var desktopRule = matched.FirstOrDefault(r => r.Id is "winforms" or "wpf");
+                if (desktopRule != null)
+                {
+                    primary = desktopRule;
+                }
+                else if (ProjectStackDetector.IsWebAspNetProject(paths))
+                {
+                    var webRule = matched.FirstOrDefault(r =>
+                        r.Id is "fullstack-dotnet-react" or "dotnet-aspnet");
+                    if (webRule != null)
+                    {
+                        primary = webRule;
+                    }
+                }
             }
         }
 
@@ -126,12 +148,13 @@ internal static class ProjectStackCatalog
             keyFiles = SelectFallbackKeys(paths);
         }
 
+        // Utility-флаг только у primary-стека: docker-compose рядом с API не делает monorepo «утилитой».
         return new StackAnalysis(
             primary.Framework,
             primary.Layout,
             signals,
             keyFiles,
-            matched.Any(r => r.IsScriptTestOrInfraUtility));
+            primary.IsScriptTestOrInfraUtility);
     }
 
     public static bool IsUtilityOrTestStack(string framework, string layout) =>
@@ -358,7 +381,21 @@ internal static class ProjectStackCatalog
              p.Contains("WindowsForms", StringComparison.OrdinalIgnoreCase)));
 
     private static bool HasDotNetConsole(IReadOnlyList<string> paths) =>
+        !ProjectStackDetector.IsWebAspNetProject(paths) &&
         paths.Any(p => Path.GetFileName(p).Equals("Program.cs", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsFullStackDotNetReact(IReadOnlyList<string> paths) =>
+        ProjectStackDetector.IsWebAspNetProject(paths) && HasReact(paths);
+
+    private static IReadOnlyList<string> SelectFullStackKeys(IReadOnlyList<string> paths)
+    {
+        var apiKeys = SelectDotNetKeys(paths);
+        var clientKeys = SelectFrontendKeys(paths);
+        return apiKeys.Concat(clientKeys)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(10)
+            .ToList();
+    }
 
     private static bool HasNodePackage(IReadOnlyList<string> paths) =>
         paths.Any(p =>

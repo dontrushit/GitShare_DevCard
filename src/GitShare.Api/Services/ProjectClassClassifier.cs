@@ -11,13 +11,19 @@ internal static class ProjectClassClassifier
     public const string DocOpsKnowledgeBase = "DocOps / Knowledge Base";
 
     public static bool IsUnityArchitectureExamples(string repoName) =>
-        repoName.Contains("architecture-examples", StringComparison.OrdinalIgnoreCase);
+        UnityRepositoryHeuristics.IsUnityArchitectureExamples(repoName);
 
     public static string Classify(string repoName, string manifest)
     {
         if (IsQaByRepoName(repoName) || IsQaManifest(manifest))
         {
             return QaTesting;
+        }
+
+        if (manifest.Contains("Unity", StringComparison.OrdinalIgnoreCase) &&
+            UnityRepositoryHeuristics.IsUnityShaderRepository(repoName, manifest))
+        {
+            return UtilityAutomation;
         }
 
         if (UnityRepositoryHeuristics.IsUnityToolkitRepository(repoName, manifest) &&
@@ -37,6 +43,16 @@ internal static class ProjectClassClassifier
             return UtilityAutomation;
         }
 
+        if (UnityRepositoryHeuristics.IsUnityCompositionRootGame(repoName, manifest))
+        {
+            return UtilityAutomation;
+        }
+
+        if (IsPetDesktopApplication(repoName, manifest))
+        {
+            return UtilityAutomation;
+        }
+
         if (RepositorySelection.MatchesAuditBlacklist(repoName) ||
             manifest.Contains("Static / Documentation", StringComparison.OrdinalIgnoreCase) ||
             manifest.Contains("Suggested layout: Documentation", StringComparison.OrdinalIgnoreCase))
@@ -50,6 +66,11 @@ internal static class ProjectClassClassifier
             return ProductionApp;
         }
 
+        if (IsProductionManifest(manifest) && HasApplicationCodeSignals(manifest))
+        {
+            return ProductionApp;
+        }
+
         if (manifest.Contains("Utility/test stack: yes", StringComparison.OrdinalIgnoreCase))
         {
             if (IsQaManifest(manifest))
@@ -58,11 +79,6 @@ internal static class ProjectClassClassifier
             }
 
             return UtilityAutomation;
-        }
-
-        if (IsProductionManifest(manifest) && HasApplicationCodeSignals(manifest))
-        {
-            return ProductionApp;
         }
 
         if (manifest.Contains("Linux kernel", StringComparison.OrdinalIgnoreCase) ||
@@ -117,12 +133,48 @@ internal static class ProjectClassClassifier
             return "Учебная витрина архитектурных стилей (Flat / MVC / MV). Сравнение паттернов, а не production runtime.";
         }
 
+        if (!string.IsNullOrWhiteSpace(manifest) &&
+            manifest.Contains("Unity", StringComparison.OrdinalIgnoreCase))
+        {
+            if (UnityRepositoryHeuristics.IsUnityShaderRepository(repoName, manifest))
+            {
+                return "Unity shader/VFX: графический ассет в Assets/; enterprise DI и data-слои не применимы.";
+            }
+
+            if (UnityRepositoryHeuristics.IsUnityToolkitRepository(repoName, manifest))
+            {
+                return "Unity plugin/toolkit: runtime в Plugins/, Editor-контур отдельно; оценка по API, testability вне Play Mode, не по Repository/DI.";
+            }
+
+            if (UnityRepositoryHeuristics.IsUnityLearningRepository(repoName))
+            {
+                return "Unity tutorial/example: минимальная структура под демо; enterprise-слои не требуются.";
+            }
+
+            if (UnityRepositoryHeuristics.IsUnityCompositionRootGame(repoName, manifest))
+            {
+                return "Unity game sample: Composition Root (CompositeRoot/*) + View-слой; ручная композиция зависимостей, не enterprise DI/Repository.";
+            }
+
+            return "Unity-проект: оценка по Editor/Runtime границе и организации скриптов, не по enterprise DI.";
+        }
+
         if (projectClass == UtilityAutomation && !string.IsNullOrWhiteSpace(manifest))
         {
+            if (OssRepositoryHeuristics.IsGoCliAuditContext(repoName, manifest))
+            {
+                return "Go CLI: go.mod + команды; оценка по модульности и тестируемости, не по DI/Repository.";
+            }
+
             if (manifest.Contains("C (native)", StringComparison.OrdinalIgnoreCase) ||
                 manifest.Contains("Linux kernel", StringComparison.OrdinalIgnoreCase))
             {
                 return "Нативный C-код: модульная структура и Makefile; enterprise-слои (DI/Repository) не применяются.";
+            }
+
+            if (ManifestDescribesWebApi(manifest))
+            {
+                return "Web API: прикладная логика в Services/, точка входа и DI в Program.cs; data-слой через EF Core/DbContext.";
             }
 
             var hasServices = manifest.Contains("Services folder", StringComparison.OrdinalIgnoreCase) ||
@@ -254,6 +306,14 @@ internal static class ProjectClassClassifier
         };
     }
 
+    public static bool ManifestDescribesWebApi(string manifest) =>
+        manifest.Contains("ASP.NET", StringComparison.OrdinalIgnoreCase) ||
+        manifest.Contains("Web API", StringComparison.OrdinalIgnoreCase) ||
+        manifest.Contains("/Controllers/", StringComparison.OrdinalIgnoreCase) ||
+        (manifest.Contains("Program.cs", StringComparison.OrdinalIgnoreCase) &&
+         manifest.Contains("appsettings", StringComparison.OrdinalIgnoreCase) &&
+         manifest.Contains("Services folder", StringComparison.OrdinalIgnoreCase));
+
     public static bool HasApplicationCodeSignals(string manifest) =>
         manifest.Contains("Program.cs", StringComparison.OrdinalIgnoreCase) ||
         manifest.Contains(".csproj", StringComparison.OrdinalIgnoreCase) ||
@@ -316,6 +376,54 @@ internal static class ProjectClassClassifier
         manifest.Contains("E2E Test", StringComparison.OrdinalIgnoreCase) ||
         manifest.Contains("Test Suite", StringComparison.OrdinalIgnoreCase) ||
         manifest.Contains("Jest/Vitest", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsPetDesktopApplication(string repoName, string manifest)
+    {
+        if (ManifestDescribesWebApi(manifest) ||
+            manifest.Contains("ASP.NET", StringComparison.OrdinalIgnoreCase) ||
+            manifest.Contains("Web API + SPA", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var lowerName = repoName.ToLowerInvariant();
+        var isPetName = lowerName.Contains("catalog", StringComparison.Ordinal) ||
+                        lowerName.Contains("phones", StringComparison.Ordinal) ||
+                        lowerName.Contains("contacts", StringComparison.Ordinal) ||
+                        lowerName.Contains("calculator", StringComparison.Ordinal) ||
+                        lowerName.Contains("demo", StringComparison.Ordinal) ||
+                        lowerName.Contains("sample", StringComparison.Ordinal);
+
+        if (!isPetName)
+        {
+            return false;
+        }
+
+        if (ManifestDescribesWebApi(manifest) ||
+            manifest.Contains("ASP.NET", StringComparison.OrdinalIgnoreCase) ||
+            manifest.Contains("React", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var isDesktopStack = manifest.Contains("WinForms", StringComparison.OrdinalIgnoreCase) ||
+                             manifest.Contains("WPF", StringComparison.OrdinalIgnoreCase) ||
+                             manifest.Contains("Flat Monolith (WinForms)", StringComparison.OrdinalIgnoreCase) ||
+                             manifest.Contains("MVVM (Desktop)", StringComparison.OrdinalIgnoreCase);
+
+        return isDesktopStack ||
+               (manifest.Contains("Program.cs", StringComparison.OrdinalIgnoreCase) &&
+                manifest.Contains(".csproj", StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static bool IsConsoleUtilityManifest(string manifest) =>
+        manifest.Contains("Console Utility", StringComparison.OrdinalIgnoreCase) ||
+        manifest.Contains(".NET, Console", StringComparison.OrdinalIgnoreCase) ||
+        manifest.Contains(".NET, консоль", StringComparison.OrdinalIgnoreCase) ||
+        (manifest.Contains("Program.cs", StringComparison.OrdinalIgnoreCase) &&
+         manifest.Contains("Console", StringComparison.OrdinalIgnoreCase) &&
+         !manifest.Contains("WinForms", StringComparison.OrdinalIgnoreCase) &&
+         !manifest.Contains("WPF", StringComparison.OrdinalIgnoreCase));
 
     public static bool IsSmallPetConsoleGame(string repoName, string manifestOrFramework)
     {

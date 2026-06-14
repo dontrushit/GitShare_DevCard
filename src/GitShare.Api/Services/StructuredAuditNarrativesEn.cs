@@ -71,10 +71,11 @@ internal static class StructuredAuditNarrativesEn
             parts.Add("Program.cs without appsettings.json. Configuration is likely hard-coded.");
         }
 
-        if (manifest.Contains("Utility/test stack: yes", StringComparison.OrdinalIgnoreCase) ||
-            ProjectStackCatalog.IsUtilityOrTestStack(
-                StructuredAuditBuilder.ExtractManifestValue(manifest, "Primary framework:") ?? string.Empty,
-                StructuredAuditBuilder.ExtractManifestValue(manifest, "Suggested layout:") ?? string.Empty))
+        if (!ProjectClassClassifier.ManifestDescribesWebApi(manifest) &&
+            (ManifestSignalParser.ManifestHasUtilityTestStackFlag(manifest) ||
+             ProjectStackCatalog.IsUtilityOrTestStack(
+                 StructuredAuditBuilder.ExtractManifestValue(manifest, "Primary framework:") ?? string.Empty,
+                 StructuredAuditBuilder.ExtractManifestValue(manifest, "Suggested layout:") ?? string.Empty)))
         {
             parts.Add(
                 "Utility, tests, or IaC: enterprise layers (Repository/Services) do not apply to this format.");
@@ -107,7 +108,15 @@ internal static class StructuredAuditNarrativesEn
                 $"In {repoName}, DataService.cs sits on the UI boundary. How do you test the data layer without spinning up Views/Windows?";
         }
 
-        if (manifest.Contains("Converter", StringComparison.OrdinalIgnoreCase))
+        if (ProjectClassClassifier.ManifestDescribesWebApi(manifest))
+        {
+            return manifest.Contains("React", StringComparison.OrdinalIgnoreCase) ||
+                   manifest.Contains("SPA", StringComparison.OrdinalIgnoreCase)
+                ? $"In {repoName}, trace an HTTP request from the API to the database. Where do controller, service, and persistence split?"
+                : $"In {repoName}, how does a request flow from controller to the data layer? Where are dependencies registered?";
+        }
+
+        if (ManifestSignalParser.ManifestHasWpfConverterArtifacts(manifest))
         {
             citedFile = keyFiles.FirstOrDefault(f => f.Contains("Converter", StringComparison.OrdinalIgnoreCase)) ?? citedFile;
             return

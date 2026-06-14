@@ -11,21 +11,7 @@ public sealed class RepositoryCodeEvidenceService(
     ILogger<RepositoryCodeEvidenceService> logger)
 {
     private const string GitHubHttpClientName = "GitHub";
-    private const int MaxSourceFiles = 8;
     private const int MaxCharsPerFile = 14_000;
-
-    private static readonly string[] PriorityFileNames =
-    [
-        "Program.cs",
-        "App.xaml.cs",
-        "MainWindow.xaml.cs",
-        "DbHelper.cs",
-        "DataService.cs",
-        "FileStorage.cs",
-        "TaskService.cs",
-        "MainViewModel.cs",
-        "IStorage.cs"
-    ];
 
     public async Task<(IReadOnlyList<string> Pros, IReadOnlyList<string> Cons)> AnalyzeAsync(
         string owner,
@@ -34,105 +20,47 @@ public sealed class RepositoryCodeEvidenceService(
         string signatureManifest,
         CancellationToken cancellationToken)
     {
-        var paths = blobPaths
+        var detailed = await AnalyzeDetailedAsync(owner, repoName, blobPaths, signatureManifest, cancellationToken);
+        return (detailed.Pros, detailed.Cons);
+    }
+
+    internal async Task<CodeEvidenceAnalysisResult> AnalyzeDetailedAsync(
+        string owner,
+        string repoName,
+        IReadOnlyList<string> blobPaths,
+        string signatureManifest,
+        CancellationToken cancellationToken)
+    {
+        var normalized = blobPaths
             .Select(p => p.Replace('\\', '/'))
-            .Where(p => p.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        if (paths.Count == 0)
+        var csharpPaths = normalized
+            .Where(p => p.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (csharpPaths.Count == 0)
         {
-            return ([], []);
+            return CodeEvidenceAnalysisResult.Empty;
         }
 
-        var selected = SelectSourcePaths(paths, signatureManifest);
+        var profile = StackEvidenceProfileResolver.Resolve(signatureManifest, normalized);
+        var selected = StackEvidenceFileProfiles.SelectCodeEvidencePaths(profile, normalized, signatureManifest);
         if (selected.Count == 0)
         {
-            return ([], []);
+            return CodeEvidenceAnalysisResult.Empty;
         }
 
         var sources = await FetchSourcesAsync(owner, repoName, selected, cancellationToken);
         if (sources.Count == 0)
         {
-            return ([], []);
+            return CodeEvidenceAnalysisResult.Empty;
         }
 
-        var facts = CodeEvidenceFacts.From(paths, signatureManifest, sources);
-        return CodeEvidenceProsConsBuilder.Build(facts);
-    }
-
-    private static List<string> SelectSourcePaths(
-        IReadOnlyList<string> blobPaths,
-        string signatureManifest)
-    {
-        var isUnity = signatureManifest.Contains("Unity", StringComparison.OrdinalIgnoreCase);
-        var selected = new List<string>();
-
-        if (isUnity)
-        {
-            foreach (var fileName in ProjectStackDetector.SelectUnityKeyFileNames(blobPaths, maxCount: MaxSourceFiles))
-            {
-                var match = blobPaths.FirstOrDefault(p =>
-                    p.EndsWith('/' + fileName, StringComparison.OrdinalIgnoreCase) ||
-                    p.Equals(fileName, StringComparison.OrdinalIgnoreCase));
-                if (match is not null)
-                {
-                    selected.Add(match);
-                }
-            }
-        }
-
-        foreach (var name in PriorityFileNames)
-        {
-            if (selected.Count >= MaxSourceFiles)
-            {
-                break;
-            }
-
-            var match = blobPaths.FirstOrDefault(p =>
-                p.EndsWith('/' + name, StringComparison.OrdinalIgnoreCase) ||
-                p.Equals(name, StringComparison.OrdinalIgnoreCase));
-            if (match is not null && !selected.Contains(match, StringComparer.OrdinalIgnoreCase))
-            {
-                selected.Add(match);
-            }
-        }
-
-        foreach (var path in blobPaths)
-        {
-            if (selected.Count >= MaxSourceFiles)
-            {
-                break;
-            }
-
-            if (selected.Contains(path, StringComparer.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (isUnity)
-            {
-                if (path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) &&
-                    (path.Contains("/Plugins/", StringComparison.OrdinalIgnoreCase) ||
-                     path.Contains("/Editor/", StringComparison.OrdinalIgnoreCase) ||
-                     path.Contains("/Scripts/", StringComparison.OrdinalIgnoreCase)))
-                {
-                    selected.Add(path);
-                }
-
-                continue;
-            }
-
-            if (path.Contains("/Converters/", StringComparison.OrdinalIgnoreCase) ||
-                path.Contains("/Interfaces/", StringComparison.OrdinalIgnoreCase) ||
-                path.Contains("/Services/", StringComparison.OrdinalIgnoreCase) ||
-                path.Contains("/Helpers/", StringComparison.OrdinalIgnoreCase))
-            {
-                selected.Add(path);
-            }
-        }
-
-        return selected.Take(MaxSourceFiles).ToList();
+        var facts = CodeEvidenceFacts.From(csharpPaths, signatureManifest, sources);
+        var (pros, cons) = CodeEvidenceProsConsBuilder.Build(facts);
+        return new CodeEvidenceAnalysisResult(pros, cons, facts, profile);
     }
 
     private async Task<Dictionary<string, string>> FetchSourcesAsync(
@@ -271,6 +199,10 @@ internal sealed class CodeEvidenceFacts
     public bool HasFileStorageFile { get; init; }
     public bool HasProgramCs { get; init; }
     public bool HasCompositionRootPattern { get; init; }
+    public bool HasWebApiSignals { get; init; }
+    public bool HasDbContextInTree { get; init; }
+    public bool HasTestProjectInTree { get; init; }
+    public bool HasStorageFolder { get; init; }
 
     public static CodeEvidenceFacts From(
         IReadOnlyList<string> blobPaths,
@@ -292,6 +224,9 @@ internal sealed class CodeEvidenceFacts
                                  path.Contains("DataService", StringComparison.OrdinalIgnoreCase) ||
                                  path.Contains("MainWindow", StringComparison.OrdinalIgnoreCase) ||
                                  path.Contains("Program.cs", StringComparison.OrdinalIgnoreCase) ||
+                                 path.Contains("/Storage/", StringComparison.OrdinalIgnoreCase) ||
+                                 path.Contains("/ViewModels/", StringComparison.OrdinalIgnoreCase) ||
+                                 path.Contains("DbContext", StringComparison.OrdinalIgnoreCase) ||
                                  (isUnity && path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase));
 
             if (!isRelevantFile)
@@ -393,7 +328,19 @@ internal sealed class CodeEvidenceFacts
             HasFileStorageFile = pathSet.Any(p =>
                 p.Contains("FileStorage", StringComparison.OrdinalIgnoreCase)),
             HasProgramCs = pathSet.Any(p => p.EndsWith("Program.cs", StringComparison.OrdinalIgnoreCase)),
-            HasCompositionRootPattern = UnityRepositoryHeuristics.HasCompositionRootPattern(blobPaths, manifest)
+            HasCompositionRootPattern = UnityRepositoryHeuristics.HasCompositionRootPattern(blobPaths, manifest),
+            HasWebApiSignals = ProjectClassClassifier.ManifestDescribesWebApi(manifest) ||
+                               pathSet.Any(p => p.Contains("/Controllers/", StringComparison.OrdinalIgnoreCase)),
+            HasDbContextInTree = pathSet.Any(p =>
+                p.EndsWith("DbContext.cs", StringComparison.OrdinalIgnoreCase) ||
+                p.Contains("DbContext", StringComparison.OrdinalIgnoreCase)),
+            HasTestProjectInTree = pathSet.Any(p =>
+                p.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase) &&
+                (p.Contains("Tests", StringComparison.OrdinalIgnoreCase) ||
+                 p.Contains(".Tests.", StringComparison.OrdinalIgnoreCase))),
+            HasStorageFolder = pathSet.Any(p =>
+                p.Contains("/Storage/", StringComparison.OrdinalIgnoreCase) ||
+                p.Contains("\\Storage\\", StringComparison.OrdinalIgnoreCase))
         };
     }
 
@@ -494,10 +441,19 @@ internal static class CodeEvidenceProsConsBuilder
 
         if (f.HasTryCatchInDataLayer && f.TryCatchFile is not null)
         {
-            pros.Add(
-                f.HasMessageBoxInCatch
-                    ? $"Обработка ошибок БД/IO: try/catch с уведомлением пользователя в {f.TryCatchFile} (проверено в коде)."
-                    : $"Обработка ошибок доступа к данным: try/catch в {f.TryCatchFile} (проверено в коде).");
+            if (f.HasWebApiSignals &&
+                f.TryCatchFile.Contains("Program.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                pros.Add(
+                    $"Обработка ошибок при старте/hosting: try/catch в {f.TryCatchFile} (проверено в коде).");
+            }
+            else
+            {
+                pros.Add(
+                    f.HasMessageBoxInCatch
+                        ? $"Обработка ошибок БД/IO: try/catch с уведомлением пользователя в {f.TryCatchFile} (проверено в коде)."
+                        : $"Обработка ошибок доступа к данным: try/catch в {f.TryCatchFile} (проверено в коде).");
+            }
         }
 
         if (f.HasAsyncAwait)
@@ -519,15 +475,18 @@ internal static class CodeEvidenceProsConsBuilder
 
         if (f.HasServicesFolder)
         {
-            var isDesktopUi = f.HasWinFormsSignals || f.HasWpfSignals;
-            pros.Add(isDesktopUi
-                ? "Папка Services/ — прикладная логика отделена от UI-слоя (дерево)."
-                : "Папка Services/ — прикладная логика отделена от точки входа Program.cs (дерево).");
+            pros.Add(f.HasWebApiSignals
+                ? "Папка Services/ — бизнес-логика вынесена из контроллеров (дерево)."
+                : f.HasWinFormsSignals || f.HasWpfSignals
+                    ? "Папка Services/ — прикладная логика отделена от UI-слоя (дерево)."
+                    : "Папка Services/ — прикладная логика отделена от точки входа Program.cs (дерево).");
         }
 
         if (f.HasRepositoryInTree)
         {
-            pros.Add("Repository/Context в структуре — персистентность вынесена из UI.");
+            pros.Add(f.HasWebApiSignals
+                ? "DbContext/Repository в структуре — persistence отделён от API-контроллеров."
+                : "Repository/Context в структуре — персистентность вынесена из UI.");
         }
 
         if (f.HasIStorageAbstraction || f.HasInterfacesFolder)
@@ -625,4 +584,14 @@ internal static class CodeEvidenceProsConsBuilder
             pros.Add("Слои Services/Converters в дереве — прикладная логика не смешана с разметкой.");
         }
     }
+}
+
+internal sealed record CodeEvidenceAnalysisResult(
+    IReadOnlyList<string> Pros,
+    IReadOnlyList<string> Cons,
+    CodeEvidenceFacts? Facts,
+    StackEvidenceProfile StackProfile)
+{
+    public static CodeEvidenceAnalysisResult Empty { get; } =
+        new([], [], null, StackEvidenceProfile.GenericProduction);
 }

@@ -1,0 +1,222 @@
+﻿{
+    "ContentLocale":  "ru",
+    "Username":  "dontrushit",
+    "AvatarUrl":  "https://avatars.githubusercontent.com/u/224740844?v=4",
+    "Bio":  "programmmer, developer,maybe nice person",
+    "Location":  "Belarus",
+    "PublicRepos":  5,
+    "TotalStars":  0,
+    "TotalForks":  0,
+    "ContributionRatio":  1,
+    "OwnRepositoryCount":  5,
+    "ForkedRepositoryCount":  0,
+    "SmallPetProjects":  5,
+    "MediumProjects":  0,
+    "ProductionScaleProjects":  0,
+    "AuditData":  {
+                      "Projects":  [
+                                       {
+                                           "RepoName":  "WinFormsCatalog",
+                                           "ProjectClass":  "Utility / Automation",
+                                           "Framework":  ".NET, WinForms",
+                                           "LayoutType":  "Flat Monolith (WinForms)",
+                                           "KeyFiles":  [
+                                                            "Program.cs",
+                                                            "WinFormsCatalog.csproj"
+                                                        ],
+                                           "TechnicalDebt":  "DbHelper.cs + .accdb. Нет Repository/Context/DI. Data-access в хелпере, UI тянет БД напрямую. Desktop pet без enterprise-слоёв — для грейда считается utility, не production.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "Как бы вы реализовали DI в WinForms-приложении, если бы это было необходимо?",
+                                           "Pros":  [
+                                                        "Структура репозитория читаема по сигнатурам ключевых файлов.",
+                                                        "Стек и тип приложения однозначно определяются по дереву."
+                                                    ],
+                                           "Cons":  [
+                                                        "Прямой доступ к Access (.accdb) без Repository-слоя — UI и data-access связаны жёстко.",
+                                                        "Статический DbHelper — глобальное состояние, сложнее unit-тесты и параллельный доступ.",
+                                                        "WinForms + Helpers без Services/Repository — flat monolith по структуре."
+                                                    ]
+                                       },
+                                       {
+                                           "RepoName":  "WpfPhonesCatalog",
+                                           "ProjectClass":  "Utility / Automation",
+                                           "Framework":  ".NET, WPF",
+                                           "LayoutType":  "MVVM (Desktop)",
+                                           "KeyFiles":  [
+                                                            "App.xaml",
+                                                            "WpfPhonesCatalog.csproj"
+                                                        ],
+                                           "TechnicalDebt":  "MVVM: Services + Converters есть. Repository/Context отсутствуют — data-слой не отделён от UI. Desktop pet без enterprise-слоёв — для грейда считается utility, не production.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "Как вы бы улучшили архитектуру MainWindow.xaml.cs, чтобы соответствовать принципам MVVM?",
+                                           "Pros":  [
+                                                        "Обработка ошибок БД/IO: try/catch с уведомлением пользователя в DataService.cs (проверено в коде).",
+                                                        "WPF: конвертеры вынесены отдельными классами (*Converter.cs / Converters/) — привязки не в Views.",
+                                                        "Папка Services/ — прикладная логика отделена от UI-слоя (дерево)."
+                                                    ],
+                                           "Cons":  [
+                                                        "WPF + Services без Repository/Context — data-access не вынесен в отдельный слой.",
+                                                        "Пагинация в code-behind (MainWindow.xaml.cs) — логика списка в MainWindow, не во ViewModel."
+                                                    ]
+                                       },
+                                       {
+                                           "RepoName":  "GitShare_DevCard",
+                                           "ProjectClass":  "Production App",
+                                           "Framework":  ".NET, ASP.NET, React",
+                                           "LayoutType":  "Web API + SPA",
+                                           "KeyFiles":  [
+                                                            "Program.cs",
+                                                            "appsettings.json",
+                                                            "GitShare.Api.csproj",
+                                                            "GitShare.Api.Tests.csproj",
+                                                            "package.json",
+                                                            "tsconfig.json",
+                                                            "vite.config.ts",
+                                                            "App.tsx"
+                                                        ],
+                                           "TechnicalDebt":  "Утилита, тесты или IaC: enterprise-слои (Repository/Services) к формату не относятся.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "Как вы бы реализовали кэширование для API, чтобы минимизировать нагрузку на внешние сервисы?",
+                                           "Pros":  [
+                                                        "Обработка ошибок доступа к данным: try/catch в Program.cs (проверено в коде).",
+                                                        "Папка Services/ — прикладная логика отделена от точки входа Program.cs (дерево).",
+                                                        "Repository/Context в структуре — персистентность вынесена из UI."
+                                                    ],
+                                           "Cons":  [
+
+                                                    ]
+                                       },
+                                       {
+                                           "RepoName":  "TaskManagerApp",
+                                           "ProjectClass":  "Utility / Automation",
+                                           "Framework":  ".NET, консоль",
+                                           "LayoutType":  "Console Utility",
+                                           "KeyFiles":  [
+                                                            "Program.cs",
+                                                            "TaskManagerApp.csproj"
+                                                        ],
+                                           "TechnicalDebt":  "Консольное приложение: Services/ и Storage/ в дереве; DI-контейнер и Repository-слой отсутствуют.",
+                                           "DebtSeverity":  "CLEAN",
+                                           "InterviewTrapQuestion":  "Какие преимущества даёт использование интерфейсов для хранилища в консольных приложениях?",
+                                           "Pros":  [
+                                                        "Папка Services/ — прикладная логика отделена от точки входа Program.cs (дерево).",
+                                                        "Абстракция хранилища (IStorage / Interfaces/) — задел под DIP и подмену реализации."
+                                                    ],
+                                           "Cons":  [
+
+                                                    ]
+                                       }
+                                   ],
+                      "CoreEngineeringFocus":  "C# и .NET — доминирующий стек с акцентом на desktop-приложения и веб-сервисы.",
+                      "GitFormatStandard":  "Descriptive / Non-standard",
+                      "ExperienceProfile":  "36,4% коммитов в рабочее время, остальное — вечерние часы.",
+                      "OpenSourceImpact":  "Публичный OSS-след отсутствует: 0★, внешних PR не видно."
+                  },
+    "ActivityTelemetry":  {
+                              "RecentCommitMessages":  [
+                                                           "Update catalog: filters, sorting, form layout. Remove README.",
+                                                           "minor design changes",
+                                                           "Documentation update",
+                                                           "Remove README-Collections-And-Generics.md",
+                                                           "Rename project to WinFormsCatalog (folder, sln, csproj, namespaces)",
+                                                           "Initial commit: WinForms phone catalog (Access, three forms)",
+                                                           "WPF catalog: PostgreSQL, cart, UI",
+                                                           "GitShare DevCard: GitHub profile analytics and architecture audit.",
+                                                           "Initial commit: TaskManager console app"
+                                                       ],
+                              "CommitsInWorkingHours":  4,
+                              "CommitsInOffHours":  7,
+                              "ExternalPullRequests":  [
+
+                                                       ],
+                              "TotalStars":  0,
+                              "TopStarredRepos":  [
+
+                                                  ]
+                          },
+    "LanguageStack":  [
+                          {
+                              "Language":  "C#",
+                              "Percentage":  79.7
+                          },
+                          {
+                              "Language":  "TypeScript",
+                              "Percentage":  17.9
+                          },
+                          {
+                              "Language":  "PowerShell",
+                              "Percentage":  1.5
+                          },
+                          {
+                              "Language":  "CSS",
+                              "Percentage":  0.5
+                          },
+                          {
+                              "Language":  "JavaScript",
+                              "Percentage":  0.2
+                          },
+                          {
+                              "Language":  "Dockerfile",
+                              "Percentage":  0.2
+                          },
+                          {
+                              "Language":  "HTML",
+                              "Percentage":  0.1
+                          }
+                      ],
+    "CommitRhythm":  [
+                         {
+                             "Hour":  14,
+                             "CommitCount":  1
+                         },
+                         {
+                             "Hour":  18,
+                             "CommitCount":  3
+                         },
+                         {
+                             "Hour":  21,
+                             "CommitCount":  1
+                         }
+                     ],
+    "TopRepositories":  [
+                            {
+                                "Name":  "WinFormsCatalog",
+                                "Description":  "",
+                                "Stars":  0,
+                                "Language":  "C#",
+                                "Url":  "https://github.com/dontrushit/WinFormsCatalog"
+                            },
+                            {
+                                "Name":  "WpfPhonesCatalog",
+                                "Description":  "",
+                                "Stars":  0,
+                                "Language":  "C#",
+                                "Url":  "https://github.com/dontrushit/WpfPhonesCatalog"
+                            },
+                            {
+                                "Name":  "GitShare_DevCard",
+                                "Description":  "",
+                                "Stars":  0,
+                                "Language":  "C#",
+                                "Url":  "https://github.com/dontrushit/GitShare_DevCard"
+                            },
+                            {
+                                "Name":  "TaskManagerApp",
+                                "Description":  "",
+                                "Stars":  0,
+                                "Language":  "C#",
+                                "Url":  "https://github.com/dontrushit/TaskManagerApp"
+                            }
+                        ],
+    "ProgrammerLevel":  {
+                            "Code":  "junior",
+                            "Title":  "Джуниор",
+                            "Score":  18,
+                            "RawScore":  24,
+                            "SignalConfidence":  0.76,
+                            "IsLowConfidence":  true,
+                            "Rationale":  "слабый сигнал портфеля (×0,76: мало собственных репо, мало звёзд); 1 production в аудите; 6 техн. семейств; craft: 1 production",
+                            "AssessmentSummary":  "Уровень джуниор обоснован слабым сигналом портфеля: все проекты небольшие, без звёзд и внешнего вклада в open source. Основной стек сосредоточен на C# и .NET, с акцентом на десктопные приложения, но масштабных production-решений нет. Оценка основана на открытых данных GitHub.",
+                            "Disclaimer":  "По открытому GitHub-портфелю (топ-репо и аудит), не по должности в компании."
+                        }
+}

@@ -73,7 +73,7 @@ public sealed class GitHubRawContentFetcher(
             .Where(r => !string.IsNullOrWhiteSpace(r.content))
             .Select(r => new KeyFileContentEntry
             {
-                FileName = Path.GetFileName(r.path.Replace('\\', '/')) is { Length: > 0 } name ? name : r.path,
+                FileName = r.path.Replace('\\', '/'),
                 Content = r.content!.Trim()
             })
             .ToList();

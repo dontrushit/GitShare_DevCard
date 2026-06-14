@@ -33,10 +33,15 @@ internal static partial class AuditEvidenceEnforcer
             .GroupBy(p => p.RepoName.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
+        var forensicsByRepo = forensics
+            .GroupBy(f => f.RepoName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
         var mergedProjects = evidence.Projects
             .Select(ep => MergeProject(
                 ep,
                 llmByRepo,
+                forensicsByRepo.GetValueOrDefault(ep.RepoName),
                 readmeByRepo.GetValueOrDefault(ep.RepoName),
                 locale,
                 portfolioTotalStars))
@@ -57,7 +62,54 @@ internal static partial class AuditEvidenceEnforcer
 
         GitTelemetryAnalyzer.ApplyTelemetryFields(result, telemetry, llmParsed, locale);
         SanitizeLlmNarratives(result, locale);
+        ReconcileRepositoryLevel(result, forensicsByRepo, locale);
+        ReconcileArchitectureSeverity(result, forensicsByRepo);
         return result;
+    }
+
+    private static void ReconcileRepositoryLevel(
+        StructuredAuditResponse response,
+        IReadOnlyDictionary<string, RepositoryForensics> forensicsByRepo,
+        AuditContentLocale locale)
+    {
+        foreach (var project in response.Projects)
+        {
+            if (!forensicsByRepo.TryGetValue(project.RepoName, out var repo))
+            {
+                continue;
+            }
+
+            var level = RepositoryLevelEvaluator.Evaluate(repo, project.ProjectClass, locale);
+            project.RepositoryLevel = level;
+
+            var assessment = RepositoryArchitectureAssessmentBuilder.Build(
+                repo,
+                project.ProjectClass,
+                project.Framework,
+                project.LayoutType,
+                project.DebtSeverity,
+                project.Pros,
+                project.Cons,
+                level,
+                locale);
+
+            project.ArchitectureSummary = assessment.ArchitectureSummary;
+        }
+    }
+
+    private static void ReconcileArchitectureSeverity(
+        StructuredAuditResponse response,
+        IReadOnlyDictionary<string, RepositoryForensics> forensicsByRepo)
+    {
+        foreach (var project in response.Projects)
+        {
+            forensicsByRepo.TryGetValue(project.RepoName, out var repo);
+            project.DebtSeverity = ArchitectureSeverityResolver.Resolve(
+                repo,
+                project.ProjectClass,
+                project.DebtSeverity,
+                project.Cons);
+        }
     }
 
     private static void SanitizeLlmNarratives(StructuredAuditResponse response, AuditContentLocale locale)
@@ -80,12 +132,16 @@ internal static partial class AuditEvidenceEnforcer
             project.InterviewTrapQuestion = PromptInjectionGuard.SanitizeNarrative(
                 project.InterviewTrapQuestion,
                 locale);
+            project.ArchitectureSummary = PromptInjectionGuard.SanitizeNarrative(
+                project.ArchitectureSummary,
+                locale);
         }
     }
 
     private static ProjectAuditDetail MergeProject(
         ProjectAuditDetail evidenceProject,
         IReadOnlyDictionary<string, ProjectAuditDetail> llmByRepo,
+        RepositoryForensics? repoForensics,
         string? readme,
         AuditContentLocale locale,
         int portfolioTotalStars)
@@ -138,6 +194,12 @@ internal static partial class AuditEvidenceEnforcer
             debtSeverity,
             portfolioTotalStars);
 
+        var architectureSummary = ArchitectureSummarySanitizer.PickSummary(
+            llmProject.ArchitectureSummary,
+            evidenceProject.ArchitectureSummary,
+            repoForensics?.Facts,
+            locale);
+
         return new ProjectAuditDetail
         {
             RepoName = evidenceProject.RepoName,
@@ -157,8 +219,10 @@ internal static partial class AuditEvidenceEnforcer
                 locale),
             DebtSeverity = debtSeverity,
             InterviewTrapQuestion = PromptInjectionGuard.SanitizeNarrative(trap, locale),
+            RepositoryLevel = evidenceProject.RepositoryLevel,
+            ArchitectureSummary = PromptInjectionGuard.SanitizeNarrative(architectureSummary, locale),
             Pros = evidenceProject.Pros,
-            Cons = evidenceProject.Cons
+            Cons = MergeLlmRisks(evidenceProject.Cons, llmProject.KeyRisks, llmProject.Cons, locale)
         };
     }
 
@@ -197,9 +261,42 @@ internal static partial class AuditEvidenceEnforcer
             TechnicalDebt = ReadmeStructureVerifier.AppendMismatchNote(project.TechnicalDebt, analysis),
             DebtSeverity = project.DebtSeverity,
             InterviewTrapQuestion = project.InterviewTrapQuestion,
+            RepositoryLevel = project.RepositoryLevel,
+            ArchitectureSummary = project.ArchitectureSummary,
             Pros = project.Pros,
             Cons = project.Cons
         };
+    }
+
+    private static List<string> MergeLlmRisks(
+        IReadOnlyList<string> evidenceRisks,
+        IReadOnlyList<string> llmKeyRisks,
+        IReadOnlyList<string> llmCons,
+        AuditContentLocale locale)
+    {
+        var merged = evidenceRisks.ToList();
+        var extras = (llmKeyRisks ?? [])
+            .Concat(llmCons ?? [])
+            .Where(r => AuditNarrativeValidator.IsValidNarrative(r, locale))
+            .Select(r => r.Trim());
+
+        foreach (var risk in extras)
+        {
+            if (merged.Any(existing => existing.Contains(risk, StringComparison.OrdinalIgnoreCase) ||
+                                       risk.Contains(existing, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            if (merged.Count >= 3)
+            {
+                break;
+            }
+
+            merged.Add(risk);
+        }
+
+        return merged;
     }
 
     private static string ResolveProjectClass(
@@ -226,7 +323,8 @@ internal static partial class AuditEvidenceEnforcer
 
         if (UnityRepositoryHeuristics.IsUnityToolkitRepository(repoName, framework) ||
             ProjectClassClassifier.IsSmallPetConsoleGame(repoName, framework) ||
-            ProjectClassClassifier.IsUnityArchitectureExamples(repoName))
+            ProjectClassClassifier.IsUnityArchitectureExamples(repoName) ||
+            ProjectClassClassifier.IsPetDesktopApplication(repoName, framework))
         {
             return ProjectClassClassifier.UtilityAutomation;
         }
@@ -405,18 +503,22 @@ internal static partial class AuditEvidenceEnforcer
 
         if (projectClass is ProjectClassClassifier.UtilityAutomation or ProjectClassClassifier.QaTesting)
         {
-            if (llm is "Critical" or "Warning")
+            var structural = ArchitectureSeverityResolver.FilterStructuralRisks(evidenceProject.Cons);
+            var merged = ArchitectureSeverityResolver.Merge(
+                evidence,
+                llm is "NONE" ? "CLEAN" : llm);
+
+            if (structural.Count >= 2)
             {
-                return evidenceProject.KeyFiles.Count >= 2 ? "CLEAN" : "Minor";
+                return ArchitectureSeverityResolver.Merge(merged, "Warning");
             }
 
-            if (llm is "Minor" &&
-                (evidence is "CLEAN" || evidenceProject.KeyFiles.Count >= 2))
+            if (structural.Count == 1)
             {
-                return "CLEAN";
+                return ArchitectureSeverityResolver.Merge(merged, "Minor");
             }
 
-            return llm is "NONE" ? "CLEAN" : llm;
+            return merged;
         }
 
         if (IsStackAuditNotApplicable(evidenceProject.Framework) &&

@@ -136,14 +136,14 @@ internal static class StructuredAuditBuilder
             else
             {
                 technicalDebt = BuildTechnicalDebt(manifest, locale);
-                debtSeverity = ClassifySeverity(manifest);
+                debtSeverity = ArchitectureSeverityResolver.FromManifest(manifest);
                 interviewTrap = BuildInterviewQuestion(manifest, repo.RepoName, keyFiles, locale);
             }
         }
         else
         {
             technicalDebt = AuditContentCatalog.DefaultTechnicalDebt(projectClass, repo.RepoName, manifest, locale);
-            debtSeverity = ResolveSeverityForNonProduction(projectClass, keyFiles);
+            debtSeverity = ArchitectureSeverityResolver.ResolveInitial(repo, projectClass);
             interviewTrap = locale == AuditContentLocale.En
                 ? AuditContentCatalog.DefaultInterviewQuestion(locale)
                 : ProjectClassClassifier.DefaultInterviewQuestionForClass(projectClass, repo.RepoName, manifest);
@@ -188,17 +188,29 @@ internal static class StructuredAuditBuilder
             portfolioTotalStars);
         detail.TechnicalDebt = ReadmeStructureVerifier.AppendMismatchNote(detail.TechnicalDebt, analysis);
 
+        var repoLevel = RepositoryLevelEvaluator.Evaluate(repo, detail.ProjectClass, locale);
+        var assessment = RepositoryArchitectureAssessmentBuilder.Build(
+            repo,
+            detail.ProjectClass,
+            detail.Framework,
+            detail.LayoutType,
+            detail.DebtSeverity,
+            detail.Pros,
+            detail.Cons,
+            repoLevel,
+            locale);
+
+        detail.RepositoryLevel = repoLevel;
+        detail.ArchitectureSummary = assessment.ArchitectureSummary;
+        detail.Pros = assessment.Strengths.ToList();
+        detail.Cons = assessment.Risks.ToList();
+        detail.DebtSeverity = ArchitectureSeverityResolver.Resolve(
+            repo,
+            detail.ProjectClass,
+            detail.DebtSeverity,
+            detail.Cons);
+
         return detail;
-    }
-
-    private static string ResolveSeverityForNonProduction(string projectClass, IReadOnlyList<string> keyFiles)
-    {
-        if (projectClass == ProjectClassClassifier.DocOpsKnowledgeBase)
-        {
-            return "NONE";
-        }
-
-        return keyFiles.Count >= 2 ? "CLEAN" : "Minor";
     }
 
     private static ProjectAuditDetail NormalizeProject(ProjectAuditDetail project, AuditContentLocale locale) =>
@@ -229,6 +241,10 @@ internal static class StructuredAuditBuilder
                     ? $"In {project.RepoName}: explain responsibility split between the key files (from signatures)."
                     : $"По сигнатурам в {project.RepoName}: объясните разделение ответственности между ключевыми файлами."
                 : project.InterviewTrapQuestion.Trim(),
+            RepositoryLevel = project.RepositoryLevel,
+            ArchitectureSummary = string.IsNullOrWhiteSpace(project.ArchitectureSummary)
+                ? string.Empty
+                : project.ArchitectureSummary.Trim(),
             Pros = FilterBulletsForContentLocale(
                 SanitizeProsConsForClass(
                     NormalizeBulletList(project.Pros),
@@ -721,10 +737,11 @@ internal static class StructuredAuditBuilder
             parts.Add("Program.cs без appsettings.json. Конфигурация, вероятно, захардкожена.");
         }
 
-        if (manifest.Contains("Utility/test stack: yes", StringComparison.OrdinalIgnoreCase) ||
-            ProjectStackCatalog.IsUtilityOrTestStack(
-                ExtractManifestValue(manifest, "Primary framework:") ?? string.Empty,
-                ExtractManifestValue(manifest, "Suggested layout:") ?? string.Empty))
+        if (!ProjectClassClassifier.ManifestDescribesWebApi(manifest) &&
+            (ManifestSignalParser.ManifestHasUtilityTestStackFlag(manifest) ||
+             ProjectStackCatalog.IsUtilityOrTestStack(
+                 ExtractManifestValue(manifest, "Primary framework:") ?? string.Empty,
+                 ExtractManifestValue(manifest, "Suggested layout:") ?? string.Empty)))
         {
             parts.Add(
                 "Утилита, тесты или IaC: enterprise-слои (Repository/Services) к формату не относятся.");
@@ -769,7 +786,15 @@ internal static class StructuredAuditBuilder
                 $"В {repoName} DataService.cs на границе с UI. Как тестируете data-слой без поднятия Views/Windows?";
         }
 
-        if (manifest.Contains("Converter", StringComparison.OrdinalIgnoreCase))
+        if (ProjectClassClassifier.ManifestDescribesWebApi(manifest))
+        {
+            return manifest.Contains("React", StringComparison.OrdinalIgnoreCase) ||
+                   manifest.Contains("SPA", StringComparison.OrdinalIgnoreCase)
+                ? $"В {repoName}: опишите путь HTTP-запроса от API до БД и где проходит граница между контроллером, сервисом и persistence."
+                : $"В {repoName}: как устроен pipeline запроса от контроллера до data-слоя? Где регистрируются зависимости?";
+        }
+
+        if (ManifestSignalParser.ManifestHasWpfConverterArtifacts(manifest))
         {
             citedFile = keyFiles.FirstOrDefault(f => f.Contains("Converter", StringComparison.OrdinalIgnoreCase)) ?? citedFile;
             return

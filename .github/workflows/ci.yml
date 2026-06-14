@@ -18,7 +18,7 @@ jobs:
         run: dotnet restore GitShare.sln
       - name: Build
         run: dotnet build GitShare.sln -c Release --no-restore
-      - name: Test
+      - name: Test (unit + offline cohort matrix)
         run: dotnet test tests/GitShare.Api.Tests/GitShare.Api.Tests.csproj -c Release --no-build
 
   client:

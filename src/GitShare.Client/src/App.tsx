@@ -19,10 +19,6 @@ import { StructuredAuditCard } from './components/StructuredAuditCard';
 import { ProfileCard } from './components/ProfileCard';
 import { SearchBar } from './components/SearchBar';
 import { TopRepositoriesGrid } from './components/TopRepositoriesGrid';
-import {
-  auditMatchesLocale,
-  profileContentLocaleMatches,
-} from './lib/auditLocale';
 import { getValidCachedProfile, setCachedProfile } from './lib/profileLocaleCache';
 import type { DevCardProfile } from './types';
 
@@ -37,7 +33,6 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLocaleLoading, setIsLocaleLoading] = useState(false);
   const fetchInFlight = useRef(false);
-  const localeRetryKey = useRef<string | null>(null);
   const profileCache = useRef(new Map<string, DevCardProfile>());
   const sessionEpoch = useRef(0);
 
@@ -50,7 +45,6 @@ export default function App() {
     setProfile(null);
     setErrorMessage(null);
     setViewState('idle');
-    localeRetryKey.current = null;
   }, []);
 
   const applyProfile = useCallback(
@@ -69,7 +63,6 @@ export default function App() {
       options?: {
         forceRefresh?: boolean;
         background?: boolean;
-        localeRetry?: boolean;
         requestLocale?: AppLocale;
       },
     ) => {
@@ -102,27 +95,6 @@ export default function App() {
           locale: requestLocale,
         });
 
-        const needsLocaleRetry =
-          !options?.localeRetry &&
-          (!profileContentLocaleMatches(data.ContentLocale, requestLocale) ||
-            !auditMatchesLocale(data.AuditData, requestLocale));
-
-        if (needsLocaleRetry) {
-          fetchInFlight.current = false;
-          setIsRefreshing(false);
-          if (epoch !== sessionEpoch.current) {
-            return;
-          }
-
-          await runAnalysis(trimmed, {
-            forceRefresh: true,
-            background,
-            localeRetry: true,
-            requestLocale,
-          });
-          return;
-        }
-
         if (epoch === sessionEpoch.current) {
           applyProfile(trimmed, data, requestLocale);
         }
@@ -132,11 +104,26 @@ export default function App() {
         }
 
         const message = translateApiError(error, t);
+        const isForceRefreshLimit =
+          error instanceof ProfileFetchError && error.kind === 'force_refresh_rate_limit';
+
+        if (isForceRefreshLimit && options?.forceRefresh) {
+          try {
+            const cachedFromServer = await fetchDevCardProfile(trimmed, {
+              locale: requestLocale,
+            });
+            if (epoch === sessionEpoch.current) {
+              applyProfile(trimmed, cachedFromServer, requestLocale);
+              setErrorMessage(message);
+            }
+            return;
+          } catch {
+            // fall through to keep-profile or error state
+          }
+        }
+
         const keepProfileVisible =
-          profile !== null &&
-          (options?.background === true ||
-            (error instanceof ProfileFetchError &&
-              error.kind === 'force_refresh_rate_limit'));
+          profile !== null && (options?.background === true || isForceRefreshLimit);
 
         if (keepProfileVisible) {
           setErrorMessage(message);
@@ -177,6 +164,7 @@ export default function App() {
     }
 
     prevLocale.current = locale;
+    setErrorMessage(null);
 
     const trimmed = username.trim();
     if (!trimmed || (viewState !== 'success' && viewState !== 'error')) {
@@ -206,34 +194,6 @@ export default function App() {
       void runAnalysis(trimmed, { requestLocale: locale });
     }
   }, [locale, username, viewState, profile, runAnalysis]);
-
-  useEffect(() => {
-    const trimmed = username.trim();
-    if (viewState !== 'success' || !profile || !trimmed) {
-      return;
-    }
-
-    if (
-      profileContentLocaleMatches(profile.ContentLocale, locale) &&
-      auditMatchesLocale(profile.AuditData, locale)
-    ) {
-      return;
-    }
-
-    const retryKey = `${trimmed}:${locale}`;
-    if (localeRetryKey.current === retryKey) {
-      return;
-    }
-
-    localeRetryKey.current = retryKey;
-    setIsLocaleLoading(true);
-    void runAnalysis(trimmed, {
-      forceRefresh: true,
-      background: true,
-      localeRetry: true,
-      requestLocale: locale,
-    });
-  }, [locale, profile, username, viewState, runAnalysis]);
 
   const dashboardHeader = (
     <div className="space-y-2 transition-all duration-300">

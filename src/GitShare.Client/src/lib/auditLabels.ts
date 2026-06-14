@@ -104,7 +104,20 @@ export function projectClassBadgeClass(projectClass?: string): string {
   return `${BADGE_BASE} border-zinc-700/60 bg-zinc-800/80 text-zinc-300`;
 }
 
-export function formatProjectClassLabel(projectClass?: string, locale: AppLocale = 'ru'): string | null {
+function isPetDesktop(projectClass: string, framework?: string): boolean {
+  if (!projectClass.includes('Utility') && !projectClass.includes('Automation')) {
+    return false;
+  }
+
+  const stack = (framework ?? '').toLowerCase();
+  return stack.includes('winforms') || stack.includes('wpf') || stack.includes('desktop');
+}
+
+export function formatProjectClassLabel(
+  projectClass?: string,
+  locale: AppLocale = 'ru',
+  framework?: string,
+): string | null {
   const cls = projectClass?.trim();
   if (!cls) {
     return null;
@@ -114,7 +127,9 @@ export function formatProjectClassLabel(projectClass?: string, locale: AppLocale
     case 'Production App':
       return messages[locale].architecture.productionClass;
     case 'Utility / Automation':
-      return labels(locale).utility;
+      return isPetDesktop(cls, framework)
+        ? messages[locale].architecture.petDesktopClass
+        : labels(locale).utility;
     case 'QA / Testing':
       return labels(locale).qa;
     case 'DocOps / Knowledge Base':

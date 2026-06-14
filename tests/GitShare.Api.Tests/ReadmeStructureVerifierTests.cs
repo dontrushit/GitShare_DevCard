@@ -118,7 +118,9 @@ public sealed class DontrushitLevelTests
                 "WinForms, Program.cs, DbHelper.cs",
                 [],
                 [],
-                []),
+                [],
+                "{}",
+                StackEvidenceProfile.WinForms),
             new(
                 "WpfPhonesCatalog",
                 "MVVM WPF sample catalog.",
@@ -127,7 +129,9 @@ public sealed class DontrushitLevelTests
                 "WPF, App.xaml, MainWindow.xaml.cs",
                 [],
                 [],
-                [])
+                [],
+                "{}",
+                StackEvidenceProfile.Wpf)
         };
 
         var llm = new StructuredAuditResponse

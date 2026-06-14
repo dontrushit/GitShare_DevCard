@@ -83,7 +83,10 @@ internal static class ProjectClassProsCons
 
         }
 
-
+        if (ProjectClassClassifier.IsPetDesktopApplication(repoName, manifest))
+        {
+            return ProjectClassClassifier.UtilityAutomation;
+        }
 
         if (EnterpriseAuditLexicon.IsProductionClass(projectClass) &&
 

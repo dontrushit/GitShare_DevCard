@@ -18,6 +18,13 @@ export interface RepoSummary {
 
 export type DebtSeverity = 'Critical' | 'Warning' | 'Minor' | 'CLEAN' | 'NONE';
 
+export interface RepositoryLevelInfo {
+  Code: string;
+  Title: string;
+  Score: number;
+  Rationale?: string;
+}
+
 export interface ProjectAuditDetail {
   RepoName: string;
   ProjectClass?: string;
@@ -29,6 +36,8 @@ export interface ProjectAuditDetail {
   InterviewTrapQuestion: string;
   Pros?: string[];
   Cons?: string[];
+  RepositoryLevel?: RepositoryLevelInfo | null;
+  ArchitectureSummary?: string;
 }
 
 export interface StructuredAuditResponse {
@@ -79,4 +88,6 @@ export interface DevCardProfile {
   CommitRhythm: HourlyActivity[];
   TopRepositories: RepoSummary[];
   ProgrammerLevel?: ProgrammerLevelInfo | null;
+  AnalyzedAtUtc?: string | null;
+  ServedFromCache?: boolean;
 }
