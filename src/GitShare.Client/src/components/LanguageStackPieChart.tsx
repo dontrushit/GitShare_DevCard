@@ -235,19 +235,23 @@ function DonutChart({
         </PieChart>
       </ResponsiveContainer>
 
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="max-w-[5.5rem] truncate text-sm font-semibold tracking-tight text-zinc-100">
-          {primary.name}
-        </span>
-        <span
-          className="mt-0.5 text-xl font-semibold tabular-nums leading-none"
-          style={{ color: primary.color }}
-        >
-          {formatLanguagePercent(primary.value)}%
-        </span>
-        {multiSlice ? (
-          <span className="mt-1 text-[9px] uppercase tracking-wider text-zinc-600">{primaryLabel}</span>
-        ) : null}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-1">
+        <div className="flex max-w-[4.5rem] flex-col items-center gap-0.5 text-center">
+          <span className="w-full truncate text-[11px] font-semibold leading-none tracking-tight text-zinc-100">
+            {primary.name}
+          </span>
+          <span
+            className="text-base font-semibold tabular-nums leading-none"
+            style={{ color: primary.color }}
+          >
+            {formatLanguagePercent(primary.value)}%
+          </span>
+          {multiSlice ? (
+            <span className="w-full truncate text-[7px] font-medium uppercase leading-none tracking-[0.1em] text-zinc-600">
+              {primaryLabel}
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -269,7 +273,7 @@ export function LanguageStackPieChart({
   const reposShareLabel = (value: number) =>
     t('languages.reposShare', { value: formatLanguagePercent(value) });
   const donutLabels = {
-    primaryLabel: t('languages.primary'),
+    primaryLabel: t('languages.primaryBadge'),
     reposShareLabel,
   };
 

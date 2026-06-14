@@ -1,0 +1,70 @@
+# Ручной live-регресс по profile-matrix.json.
+# Требует секрет GH_PROFILE_TOKEN (PAT с read:user, public_repo) в Settings → Secrets.
+name: Profile regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_refresh:
+        description: 'Bypass API cache (forceRefresh=true)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gitshare
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Start API
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          GitHub__Token: ${{ secrets.GH_PROFILE_TOKEN }}
+          AI__ApiKey: ${{ secrets.AI_API_KEY }}
+          ConnectionStrings__DefaultConnection: 'Host=localhost;Port=5432;Database=gitshare;Username=postgres;Password=postgres'
+        run: |
+          dotnet run --project src/GitShare.Api/GitShare.Api.csproj --urls http://127.0.0.1:5188 &
+          for i in $(seq 1 45); do
+            if curl -sf http://127.0.0.1:5188/health; then exit 0; fi
+            sleep 2
+          done
+          echo "API failed to start"
+          exit 1
+
+      - name: Run profile regression
+        shell: pwsh
+        run: |
+          $matrix = Get-Content scripts/profile-matrix.json -Raw | ConvertFrom-Json
+          $matrix.forceRefresh = '${{ inputs.force_refresh }}' -eq 'true'
+          $matrix | ConvertTo-Json -Depth 10 | Set-Content scripts/profile-matrix.ci.json
+          pwsh -File scripts/run-profile-regression.ps1 -MatrixPath scripts/profile-matrix.ci.json
+
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report
+          path: scripts/regression-report.json

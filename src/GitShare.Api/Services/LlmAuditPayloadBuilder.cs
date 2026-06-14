@@ -5,23 +5,22 @@ using GitShare.Api.Models;
 namespace GitShare.Api.Services;
 
 /// <summary>
-/// Сборка user-payload для LLM с жёстким лимитом символов (GitHub Models gpt-4o ≈ 8000 tokens на запрос).
+/// Сборка user-payload для LLM: глубина по 3 репозиториям, без шума портфеля.
 /// </summary>
 internal static class LlmAuditPayloadBuilder
 {
     /// <summary>~3500–4000 tokens с запасом под system prompt.</summary>
-    public const int DefaultMaxUserPayloadChars = 14_000;
+    public const int DefaultMaxUserPayloadChars = 18_000;
 
     public const string UntrustedEvidenceOpenTag = "<<<UNTRUSTED_GITHUB_EVIDENCE>>>";
     public const string UntrustedEvidenceCloseTag = "<<</UNTRUSTED_GITHUB_EVIDENCE>>>";
 
-    private const int MaxReadmeChars = 400;
-    private const int MaxManifestChars = 1_200;
-    private const int MaxKeyFileChars = 1_200;
-    private const int MaxKeyFilesPerRepo = 2;
-    private const int MaxCommitMessages = 10;
-    private const int MaxCommitMessageChars = 120;
-    private const int MaxBioChars = 200;
+    private const int MaxLlmRepositories = 3;
+    private const int MaxReadmeChars = 250;
+    private const int MaxManifestChars = 1_400;
+    private const int MaxKeyFileChars = 2_200;
+    private const int MaxKeyFilesPerRepo = 5;
+    private const int MaxDigestChars = 1_600;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -34,13 +33,13 @@ internal static class LlmAuditPayloadBuilder
         GitHubActivityTelemetry telemetry,
         int maxChars = DefaultMaxUserPayloadChars)
     {
-        var payload = BuildCore(profile, forensics, telemetry, aggressive: false);
+        var payload = BuildCore(profile, forensics, aggressive: false);
         if (payload.Length <= maxChars)
         {
             return WrapUntrustedEvidence(payload);
         }
 
-        payload = BuildCore(profile, forensics, telemetry, aggressive: true);
+        payload = BuildCore(profile, forensics, aggressive: true);
         if (payload.Length <= maxChars)
         {
             return WrapUntrustedEvidence(payload);
@@ -55,48 +54,25 @@ internal static class LlmAuditPayloadBuilder
     private static string BuildCore(
         DevCardProfile profile,
         IReadOnlyList<RepositoryForensics> forensics,
-        GitHubActivityTelemetry telemetry,
         bool aggressive)
     {
         var readmeLimit = aggressive ? 0 : MaxReadmeChars;
-        var manifestLimit = aggressive ? 600 : MaxManifestChars;
-        var keyFileLimit = aggressive ? 600 : MaxKeyFileChars;
-        var keyFilesCount = aggressive ? 1 : MaxKeyFilesPerRepo;
-        var repoLimit = aggressive ? 3 : forensics.Count;
-
-        var languages = profile.LanguageStack.Count == 0
-            ? "none detected"
-            : string.Join(", ", profile.LanguageStack.Select(l => $"{l.Language} {l.Percentage}%"));
-
-        var rhythm = profile.CommitRhythm.Count == 0
-            ? "no activity windows detected"
-            : string.Join(", ", profile.CommitRhythm.Take(12).Select(h => $"{h.Hour:00}:00={h.CommitCount}"));
+        var manifestLimit = aggressive ? 700 : MaxManifestChars;
+        var keyFileLimit = aggressive ? 900 : MaxKeyFileChars;
+        var keyFilesCount = aggressive ? 2 : MaxKeyFilesPerRepo;
+        var deepRepos = forensics.Take(MaxLlmRepositories).ToList();
 
         var sb = new StringBuilder();
-        sb.AppendLine("=== GITHUB METRICS ===");
+        sb.AppendLine("=== PORTFOLIO CONTEXT (minimal) ===");
         sb.AppendLine($"Username: {profile.Username}");
-        sb.AppendLine($"Bio: {Truncate(profile.Bio, MaxBioChars)}");
-        sb.AppendLine($"Location: {profile.Location}");
-        sb.AppendLine($"PublicRepos: {profile.PublicRepos}");
         sb.AppendLine($"TotalStars: {profile.TotalStars}");
-        sb.AppendLine($"OwnRepositories: {profile.OwnRepositoryCount}");
-        sb.AppendLine($"LanguageStack: {languages}");
-        sb.AppendLine($"CommitRhythm (hour=events): {rhythm}");
+        sb.AppendLine($"AuditedReposForLlm: {deepRepos.Count} of {forensics.Count} (deepest dive only)");
         sb.AppendLine();
-        sb.AppendLine(FormatTelemetryCompact(telemetry));
-        sb.AppendLine();
-        sb.AppendLine("=== TOP REPOSITORIES (metadata) ===");
 
-        foreach (var repo in profile.TopRepositories)
+        foreach (var evidence in deepRepos)
         {
-            var desc = Truncate(repo.Description, 80);
-            sb.AppendLine($"- {repo.Name} | Stars: {repo.Stars} | Lang: {repo.Language} | {desc}");
-        }
-
-        foreach (var evidence in forensics.Take(repoLimit))
-        {
-            sb.AppendLine();
             sb.AppendLine($"=== REPOSITORY FORENSICS: {evidence.RepoName} ===");
+            sb.AppendLine($"Stars: {evidence.Stars}");
 
             if (readmeLimit > 0)
             {
@@ -109,8 +85,6 @@ internal static class LlmAuditPayloadBuilder
 
             sb.AppendLine("--- TREE SNAPSHOT ---");
             sb.AppendLine(evidence.TreeSnapshot);
-            sb.AppendLine("--- COMMIT SNAPSHOT ---");
-            sb.AppendLine(evidence.CommitSnapshot);
             sb.AppendLine("--- TARGET FILE SIGNATURES ---");
             sb.AppendLine(
                 Truncate(
@@ -118,6 +92,12 @@ internal static class LlmAuditPayloadBuilder
                         ? "(none)"
                         : evidence.TargetSignatureManifest,
                     manifestLimit));
+            sb.AppendLine("--- SERVER VERIFIED FACTS (authoritative) ---");
+            sb.AppendLine(
+                string.IsNullOrWhiteSpace(evidence.EvidenceDigestJson)
+                    ? "{}"
+                    : Truncate(evidence.EvidenceDigestJson, MaxDigestChars));
+            sb.AppendLine($"StackProfile: {evidence.StackProfile}");
             sb.AppendLine("--- KEY FILES CONTENT ---");
             sb.AppendLine(
                 FormatKeyFilesContent(evidence.KeyFilesContent, keyFilesCount, keyFileLimit));
@@ -127,45 +107,6 @@ internal static class LlmAuditPayloadBuilder
         {
             sb.AppendLine();
             sb.AppendLine("No repository forensics available.");
-        }
-
-        return sb.ToString();
-    }
-
-    private static string FormatTelemetryCompact(GitHubActivityTelemetry telemetry)
-    {
-        var total = telemetry.CommitsInWorkingHours + telemetry.CommitsInOffHours;
-        var workingPercent = total == 0
-            ? 0
-            : Math.Round(telemetry.CommitsInWorkingHours * 100.0 / total, 1);
-
-        var sb = new StringBuilder();
-        sb.AppendLine("=== COMMIT ACTIVITY (compact) ===");
-        sb.AppendLine($"WorkingHoursPercent: {workingPercent}%");
-        sb.AppendLine($"RecentCommitMessages (max {MaxCommitMessages}):");
-
-        var messages = telemetry.RecentCommitMessages
-            .Take(MaxCommitMessages)
-            .Select(m => Truncate(m.Split('\n')[0].Trim(), MaxCommitMessageChars))
-            .Where(m => m.Length > 0);
-
-        foreach (var message in messages)
-        {
-            sb.AppendLine($"- {message}");
-        }
-
-        if (!telemetry.RecentCommitMessages.Any())
-        {
-            sb.AppendLine("- (none)");
-        }
-
-        if (telemetry.ExternalPullRequests.Count > 0)
-        {
-            sb.AppendLine("External PR repos:");
-            foreach (var repo in telemetry.ExternalPullRequests.Take(5))
-            {
-                sb.AppendLine($"- {repo}");
-            }
         }
 
         return sb.ToString();

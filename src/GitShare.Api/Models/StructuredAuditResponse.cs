@@ -62,5 +62,15 @@ public class ProjectAuditDetail
 
     [JsonConverter(typeof(FlexibleStringListJsonConverter))]
     public List<string> Cons { get; set; } = [];
+
+    /// <summary>Уровень инженерии в рамках репозитория (не портфеля).</summary>
+    public RepositoryLevelInfo? RepositoryLevel { get; set; }
+
+    /// <summary>2–4 предложения: архитектурный контекст и зрелость репозитория.</summary>
+    public string ArchitectureSummary { get; set; } = string.Empty;
+
+    /// <summary>Риски из ответа LLM (сливаются в Cons на сервере).</summary>
+    [JsonIgnore]
+    public List<string> KeyRisks { get; set; } = [];
 }
 

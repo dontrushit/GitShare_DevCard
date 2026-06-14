@@ -110,6 +110,55 @@ internal static class UnityRepositoryHeuristics
         return false;
     }
 
+    public static bool IsFlagshipQualityRepository(string repoName)
+    {
+        var lower = repoName.ToLowerInvariant();
+        return QualityRepoNameTokens.Any(t => lower.Contains(t, StringComparison.Ordinal));
+    }
+
+    /// <summary>Shader/VFX без игровой логики — не Production App.</summary>
+    public static bool IsUnityShaderRepository(string repoName, string manifest)
+    {
+        var text = $"{repoName} {manifest}".ToLowerInvariant();
+        if (!text.Contains("unity"))
+        {
+            return false;
+        }
+
+        if (repoName.Contains("shader", StringComparison.OrdinalIgnoreCase) ||
+            repoName.Contains("vfx", StringComparison.OrdinalIgnoreCase) ||
+            repoName.Contains("dissolve", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var shaderSignals = text.Contains(".shader") ||
+                            text.Contains("shaderlab") ||
+                            text.Contains("hlsl");
+        var gameplaySignals = text.Contains("monobehaviour") ||
+                              text.Contains("/scripts/") ||
+                              manifest.Contains("Controllers", StringComparison.OrdinalIgnoreCase);
+
+        return shaderSignals && !gameplaySignals;
+    }
+
+    public static bool IsUnityCompositionRootGame(string repoName, string manifest) =>
+        manifest.Contains("Unity", StringComparison.OrdinalIgnoreCase) &&
+        (HasCompositionRootPattern([], manifest) ||
+         repoName.Equals("Asteroids", StringComparison.OrdinalIgnoreCase) ||
+         repoName.Equals("amigos", StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsUnityPluginAuditContext(string repoName, string manifest) =>
+        manifest.Contains("Unity", StringComparison.OrdinalIgnoreCase) &&
+        (IsUnityToolkitRepository(repoName, manifest) ||
+         IsUnityShaderRepository(repoName, manifest) ||
+         IsUnityLearningRepository(repoName) ||
+         IsUnityArchitectureExamples(repoName) ||
+         IsUnityCompositionRootGame(repoName, manifest));
+
+    public static bool IsUnityArchitectureExamples(string repoName) =>
+        repoName.Contains("architecture-examples", StringComparison.OrdinalIgnoreCase);
+
     public static bool IsUnityToolkitRepository(string repoName, string manifestOrFramework)
     {
         var text = $"{repoName} {manifestOrFramework}".ToLowerInvariant();

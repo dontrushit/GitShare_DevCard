@@ -21,7 +21,9 @@ internal static class ManifestSignalParser
             Path.GetFileName(p).EndsWith("Context.cs", StringComparison.OrdinalIgnoreCase));
 
     public static bool HasServicesFolderInTree(IReadOnlyCollection<string> paths) =>
-        paths.Any(p => p.Contains("/Services/", StringComparison.OrdinalIgnoreCase));
+        paths.Any(p =>
+            p.Contains("/Services/", StringComparison.OrdinalIgnoreCase) ||
+            p.StartsWith("Services/", StringComparison.OrdinalIgnoreCase));
 
     public static bool HasConverterArtifacts(IReadOnlyCollection<string> paths) =>
         paths.Any(p => p.Contains("/Converters/", StringComparison.OrdinalIgnoreCase)) ||
@@ -57,6 +59,40 @@ internal static class ManifestSignalParser
     public static bool ManifestListsServicesFolder(string manifest) =>
         DetectedKeyFilesContain(manifest, "/Services/") ||
         HasArchitectureSignal(manifest, "Services folder");
+
+    /// <summary>
+    /// Сигнал в строке «Patterns (Controller/Hub/DTO/Converter):», не в заголовке manifest.
+    /// </summary>
+    public static bool PatternsLineContains(string manifest, string pattern)
+    {
+        var value = ExtractLineValue(manifest, "Patterns (Controller/Hub/DTO/Converter):");
+        if (string.IsNullOrWhiteSpace(value) ||
+            value.Equals("none", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return value.Contains(pattern, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool ManifestHasWpfConverterArtifacts(string manifest, IReadOnlyList<string>? blobPaths = null)
+    {
+        if (!HasStackSignal(manifest, "WPF") &&
+            !HasArchitectureSignal(manifest, "Converters"))
+        {
+            return false;
+        }
+
+        if (blobPaths is { Count: > 0 } && HasConverterArtifacts(blobPaths))
+        {
+            return true;
+        }
+
+        return PatternsLineContains(manifest, "Converter");
+    }
+
+    public static bool ManifestHasUtilityTestStackFlag(string manifest) =>
+        manifest.Contains("Utility/test stack: yes", StringComparison.OrdinalIgnoreCase);
 
     public static bool DetectedKeyFilesContain(string manifest, params string[] needles)
     {

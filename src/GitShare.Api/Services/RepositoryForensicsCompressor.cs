@@ -117,8 +117,12 @@ internal sealed record RepositoryForensics(
     IReadOnlyList<string> VerifiedPros,
     IReadOnlyList<string> VerifiedCons,
     IReadOnlyList<KeyFileContentEntry> KeyFilesContent,
+    string EvidenceDigestJson,
+    StackEvidenceProfile StackProfile,
     bool IsVendorAssetPack = false,
-    IReadOnlyList<string>? BlobPaths = null)
+    IReadOnlyList<string>? BlobPaths = null,
+    int Stars = 0,
+    CodeEvidenceFacts? Facts = null)
 {
     public IReadOnlyList<string> BlobPaths { get; } = BlobPaths ?? [];
 }

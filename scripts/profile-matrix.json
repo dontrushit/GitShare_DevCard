@@ -114,6 +114,25 @@
       "notes": "Laravel — Principal"
     },
     {
+      "username": "dontrushit",
+      "cohort": "self-dogfood",
+      "wave": 6,
+      "anchor": true,
+      "levelIn": ["junior", "middle", "senior"],
+      "dominantLanguage": "C#",
+      "minDominantLanguagePercent": 20,
+      "notes": "Автор GitShare — fullstack .NET/React monorepo, self-dogfood",
+      "projectRules": [
+        {
+          "repo": "GitShare_DevCard",
+          "classShouldBe": "Production App",
+          "frameworkMustContain": ["ASP.NET", "React"],
+          "frameworkMustNotContain": ["Console"],
+          "debtMustNotContain": ["Консольное приложение"]
+        }
+      ]
+    },
+    {
       "username": "octocat",
       "cohort": "edge-cases",
       "wave": 5,

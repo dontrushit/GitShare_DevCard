@@ -35,6 +35,20 @@
 | tiangolo | principal, lead | FastAPI |
 | taylorotwell | principal, lead | Laravel |
 
+## Когорта 6 — Self-dogfood
+
+| Username | Ожидание | Заметка |
+|----------|----------|---------|
+| dontrushit | middle, senior | GitShare_DevCard — ASP.NET + React, Production App |
+
+Офлайн-проверка классификации: `MatrixClassificationTests`. Live-регрессия и JSON-снимок:
+
+```powershell
+# API на :5188, токен в user-secrets
+.\scripts\export-profile-fixtures.ps1 -OnlyUser dontrushit
+.\scripts\run-profile-regression.ps1
+```
+
 ## Прогон
 
 ```powershell

@@ -56,11 +56,13 @@ public sealed class GitHubAnalyticsService(
             user.Login,
             topRepositories,
             cancellationToken);
+        var languageStackTask = BuildLanguageStackAsync(user.Login, nonForkRepos, cancellationToken);
 
-        await Task.WhenAll(forensicsTask, telemetryTask);
+        await Task.WhenAll(forensicsTask, telemetryTask, languageStackTask);
 
         var forensics = await forensicsTask;
         var activityTelemetry = await telemetryTask;
+        var languageStack = await languageStackTask;
 
         var profile = new DevCardProfile
         {
@@ -79,7 +81,7 @@ public sealed class GitHubAnalyticsService(
             MediumProjects = scale.Medium,
             ProductionScaleProjects = scale.Production,
             TopRepositories = topRepositories,
-            LanguageStack = BuildLanguageStack(nonForkRepos),
+            LanguageStack = languageStack,
             CommitRhythm = BuildCommitRhythm(repos),
             ActivityTelemetry = activityTelemetry
         };
@@ -143,7 +145,7 @@ public sealed class GitHubAnalyticsService(
         {
             Model = modelId,
             Temperature = 0.0,
-            MaxTokens = 2048,
+            MaxTokens = 2_560,
             ResponseFormat = new ChatCompletionResponseFormat { Type = "json_object" },
             Messages =
             [
@@ -229,84 +231,9 @@ public sealed class GitHubAnalyticsService(
         AuditContentLocale contentLocale,
         CancellationToken cancellationToken)
     {
-        var fallback = LevelSummaryFallbackBuilder.Build(profile, level, contentLocale);
-
-        if (!TryResolveAiApiKey(out var apiKey))
-        {
-            logger.LogInformation("Level summary: нет AI:ApiKey — rule-based текст.");
-            return fallback;
-        }
-
-        try
-        {
-            var modelId = configuration["AI:ModelId"] ?? "gpt-4o";
-            var baseUrl = configuration["AI:BaseUrl"] ?? "https://models.inference.ai.azure.com";
-            var client = httpClientFactory.CreateClient(GitHubModelsHttpClientName);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-            var userPayload = LevelSummaryPayloadBuilder.Build(profile, level);
-            var request = new ChatCompletionRequest
-            {
-                Model = modelId,
-                Temperature = 0.2,
-                MaxTokens = 320,
-                Messages =
-                [
-                    new ChatCompletionMessage
-                    {
-                        Role = "system",
-                        Content = LevelSummaryPrompts.GetSystemPrompt(contentLocale)
-                    },
-                    new ChatCompletionMessage { Role = "user", Content = userPayload }
-                ]
-            };
-
-            logger.LogInformation(
-                "Level summary → model={Model}, payload={Length} chars",
-                modelId,
-                userPayload.Length);
-
-            using var response = await client.PostAsJsonAsync(
-                "chat/completions",
-                request,
-                JsonOptions,
-                cancellationToken);
-
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                logger.LogWarning("Level summary: HTTP 429 — rule-based fallback.");
-                return fallback;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogWarning(
-                    "Level summary failed ({Status}): {Details}",
-                    (int)response.StatusCode,
-                    errorContent);
-                return fallback;
-            }
-
-            var completionResponse =
-                await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(JsonOptions, cancellationToken);
-            var content = completionResponse?.Choices?.FirstOrDefault()?.Message?.Content?.Trim();
-
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                logger.LogWarning("Level summary: пустой ответ — rule-based fallback.");
-                return fallback;
-            }
-
-            var sanitized = LevelSummarySanitizer.Normalize(content, contentLocale, fallback);
-            logger.LogInformation("Level summary OK ({Length} chars).", sanitized.Length);
-            return sanitized;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogWarning(ex, "Level summary exception — rule-based fallback.");
-            return fallback;
-        }
+        // Токены LLM уходят на глубокий per-repo аудит; портфельное резюме — rule-based.
+        logger.LogInformation("Level summary: rule-based (LLM reserved for repository architecture).");
+        return LevelSummaryFallbackBuilder.Build(profile, level, contentLocale);
     }
 
     private bool TryResolveAiApiKey(out string apiKey)
@@ -356,7 +283,7 @@ public sealed class GitHubAnalyticsService(
             MaxForensicsRepositories);
 
         var tasks = auditRepos.Select(repo =>
-            FetchSingleRepositoryForensicsAsync(username, repo.Name, repo.Language, cancellationToken));
+            FetchSingleRepositoryForensicsAsync(username, repo.Name, repo.Language, repo.Stars, cancellationToken));
 
         return await Task.WhenAll(tasks);
     }
@@ -365,6 +292,7 @@ public sealed class GitHubAnalyticsService(
         string username,
         string repoName,
         string? gitHubPrimaryLanguage,
+        int stars,
         CancellationToken cancellationToken)
     {
         var readmeTask = FetchReadmeForRepositoryAsync(username, repoName, cancellationToken);
@@ -379,6 +307,9 @@ public sealed class GitHubAnalyticsService(
 
         IReadOnlyList<string> verifiedPros;
         IReadOnlyList<string> verifiedCons;
+        CodeEvidenceFacts? evidenceFacts = null;
+        var stackProfile = StackEvidenceProfileResolver.Resolve(signatureManifest, blobPaths);
+
         if (isVendorAssetPack)
         {
             verifiedPros = [];
@@ -389,12 +320,16 @@ public sealed class GitHubAnalyticsService(
         }
         else
         {
-            (verifiedPros, verifiedCons) = await codeEvidenceService.AnalyzeAsync(
+            var evidence = await codeEvidenceService.AnalyzeDetailedAsync(
                 username,
                 repoName,
                 blobPaths,
                 signatureManifest,
                 cancellationToken);
+            verifiedPros = evidence.Pros;
+            verifiedCons = evidence.Cons;
+            evidenceFacts = evidence.Facts;
+            stackProfile = evidence.StackProfile;
         }
 
         var keyFilesContent = isVendorAssetPack
@@ -406,6 +341,14 @@ public sealed class GitHubAnalyticsService(
                 signatureManifest,
                 cancellationToken);
 
+        var evidenceDigest = RepositoryEvidenceDigestBuilder.BuildJson(
+            repoName,
+            signatureManifest,
+            stackProfile,
+            evidenceFacts,
+            verifiedPros,
+            verifiedCons);
+
         return new RepositoryForensics(
             repoName,
             await readmeTask,
@@ -415,8 +358,12 @@ public sealed class GitHubAnalyticsService(
             verifiedPros,
             verifiedCons,
             keyFilesContent,
+            evidenceDigest,
+            stackProfile,
             isVendorAssetPack,
-            blobPaths);
+            blobPaths,
+            stars,
+            evidenceFacts);
     }
 
     private async Task<string> FetchReadmeForRepositoryAsync(
@@ -628,23 +575,125 @@ public sealed class GitHubAnalyticsService(
         return await client.GetAsync(requestUri, cancellationToken);
     }
 
-    private static List<LanguageMetric> BuildLanguageStack(IReadOnlyList<RepoListMetadata> nonForkRepos)
+    private const int MaxReposForLanguageBreakdown = 30;
+
+    private async Task<List<LanguageMetric>> BuildLanguageStackAsync(
+        string username,
+        IReadOnlyList<RepoListMetadata> nonForkRepos,
+        CancellationToken cancellationToken)
+    {
+        if (nonForkRepos.Count == 0)
+        {
+            return [];
+        }
+
+        var totals = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        var reposToScan = nonForkRepos
+            .Where(r => !RepositorySelection.MatchesAuditBlacklist(r.Name))
+            .Where(r => !RepositorySelection.IsLikelyDocumentationOrEventRepo(r.Name, r.Language, r.SizeKb))
+            .OrderByDescending(RepositorySelection.LanguageRepoWeight)
+            .ThenByDescending(r => r.StargazersCount)
+            .Take(MaxReposForLanguageBreakdown)
+            .ToList();
+
+        if (reposToScan.Count == 0)
+        {
+            reposToScan = nonForkRepos.Take(MaxReposForLanguageBreakdown).ToList();
+        }
+
+        var languageTasks = reposToScan.Select(repo =>
+            TryFetchRepoLanguagesAsync(username, repo.Name, cancellationToken));
+        var languageResults = await Task.WhenAll(languageTasks);
+
+        for (var i = 0; i < reposToScan.Count; i++)
+        {
+            var repoWeight = RepositorySelection.LanguageRepoWeight(reposToScan[i]);
+            foreach (var (language, bytes) in languageResults[i])
+            {
+                var weightedBytes = (long)Math.Round(bytes * repoWeight, MidpointRounding.AwayFromZero);
+                totals[language] = totals.GetValueOrDefault(language) + weightedBytes;
+            }
+        }
+
+        if (totals.Count == 0)
+        {
+            logger.LogDebug(
+                "Language breakdown unavailable for {Username}, falling back to primary repo language",
+                username);
+            return BuildLanguageStackByRepoPrimaryLanguage(nonForkRepos);
+        }
+
+        var totalBytes = totals.Values.Sum(v => (double)v);
+        return totals
+            .Select(kv => new LanguageMetric
+            {
+                Language = kv.Key,
+                Percentage = Math.Round(kv.Value * 100.0 / totalBytes, 1)
+            })
+            .OrderByDescending(m => m.Percentage)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyDictionary<string, long>> TryFetchRepoLanguagesAsync(
+        string username,
+        string repoName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await SendGitHubRequestAsync(
+                $"repos/{username}/{repoName}/languages",
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new Dictionary<string, long>();
+            }
+
+            var parsed = await response.Content.ReadFromJsonAsync<Dictionary<string, long>>(JsonOptions, cancellationToken);
+            return parsed ?? new Dictionary<string, long>();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogDebug(ex, "Failed to fetch languages for {Repo}", repoName);
+            return new Dictionary<string, long>();
+        }
+    }
+
+    private static List<LanguageMetric> BuildLanguageStackByRepoPrimaryLanguage(
+        IReadOnlyList<RepoListMetadata> nonForkRepos)
     {
         var reposWithLanguage = nonForkRepos
             .Where(r => !string.IsNullOrWhiteSpace(r.Language))
+            .Where(r => !RepositorySelection.MatchesAuditBlacklist(r.Name))
+            .Where(r => !RepositorySelection.IsLikelyDocumentationOrEventRepo(r.Name, r.Language, r.SizeKb))
             .ToList();
+
+        if (reposWithLanguage.Count == 0)
+        {
+            reposWithLanguage = nonForkRepos
+                .Where(r => !string.IsNullOrWhiteSpace(r.Language))
+                .ToList();
+        }
 
         if (reposWithLanguage.Count == 0)
         {
             return [];
         }
 
-        return reposWithLanguage
-            .GroupBy(r => r.Language!, StringComparer.OrdinalIgnoreCase)
-            .Select(g => new LanguageMetric
+        var weightedTotals = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var repo in reposWithLanguage)
+        {
+            var weight = RepositorySelection.LanguageRepoWeight(repo);
+            weightedTotals[repo.Language!] = weightedTotals.GetValueOrDefault(repo.Language!) + weight;
+        }
+
+        var totalWeight = weightedTotals.Values.Sum();
+        return weightedTotals
+            .Select(kv => new LanguageMetric
             {
-                Language = g.Key,
-                Percentage = Math.Round(g.Count() * 100.0 / reposWithLanguage.Count, 1)
+                Language = kv.Key,
+                Percentage = Math.Round(kv.Value * 100.0 / totalWeight, 1)
             })
             .OrderByDescending(m => m.Percentage)
             .ToList();

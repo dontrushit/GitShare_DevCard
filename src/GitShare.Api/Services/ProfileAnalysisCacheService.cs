@@ -43,6 +43,7 @@ public sealed class ProfileAnalysisCacheService(
                 && AuditContentLocaleGuard.ProfileMatchesRequestedLocale(memoryProfile, localeCode))
             {
                 logger.LogInformation("Profile cache MEMORY HIT for {Username}", targetUser);
+                memoryProfile.ServedFromCache = true;
                 return memoryProfile;
             }
 
@@ -70,6 +71,8 @@ public sealed class ProfileAnalysisCacheService(
                 }
                 else
                 {
+                    profile.AnalyzedAtUtc = dbEntry.AnalyzedAt;
+                    profile.ServedFromCache = true;
                     SetMemoryCache(memoryKey, profile, ttl);
                     return profile;
                 }
@@ -86,6 +89,8 @@ public sealed class ProfileAnalysisCacheService(
         var fresh = await analyticsService.BuildProfileAsync(targetUser, contentLocale, cancellationToken);
         fresh.Username = fresh.Username.Length > 0 ? fresh.Username : targetUser;
         fresh.ContentLocale = localeCode;
+        fresh.AnalyzedAtUtc = DateTime.UtcNow;
+        fresh.ServedFromCache = false;
 
         await UpsertDbCacheAsync(targetUser, fresh, cancellationToken);
         SetMemoryCache(memoryKey, fresh, ttl);

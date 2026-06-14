@@ -8,6 +8,11 @@ internal static class LevelSummaryFallbackBuilder
     {
         var productionCount = profile.AuditData?.Projects?.Count(p =>
             EnterpriseAuditLexicon.IsProductionClass(p.ProjectClass)) ?? 0;
+        var ossUtilityCount = profile.AuditData?.Projects?.Count(p =>
+            p.ProjectClass == ProjectClassClassifier.UtilityAutomation &&
+            (p.Framework.Contains("Go", StringComparison.OrdinalIgnoreCase) ||
+             p.Framework.Contains("DevOps", StringComparison.OrdinalIgnoreCase) ||
+             OssRepositoryHeuristics.IsKnownDevOpsTool(p.RepoName))) ?? 0;
         var externalPrs = profile.ActivityTelemetry?.ExternalPullRequests?.Count ?? 0;
         var focus = profile.AuditData?.CoreEngineeringFocus?.Trim();
         var topLang = profile.LanguageStack.FirstOrDefault()?.Language ?? "—";
@@ -20,6 +25,7 @@ internal static class LevelSummaryFallbackBuilder
                 level,
                 title,
                 productionCount,
+                ossUtilityCount,
                 externalPrs,
                 focus,
                 topLang);
@@ -30,6 +36,7 @@ internal static class LevelSummaryFallbackBuilder
             level,
             title,
             productionCount,
+            ossUtilityCount,
             externalPrs,
             focus,
             topLang);
@@ -40,6 +47,7 @@ internal static class LevelSummaryFallbackBuilder
         ProgrammerLevelInfo level,
         string title,
         int productionCount,
+        int ossUtilityCount,
         int externalPrs,
         string? focus,
         string topLang)
@@ -50,6 +58,8 @@ internal static class LevelSummaryFallbackBuilder
 
         var auditLine = productionCount > 0
             ? $"В архитектурном аудите — {productionCount} production-проект(ов)"
+            : ossUtilityCount > 0 && profile.TotalStars >= 500
+                ? $"В аудите — {ossUtilityCount} CLI/DevOps-утилит(ы); критерии enterprise Production не применимы"
             : externalPrs > 0
                 ? $"Production в аудите не выделен, но есть вклад в чужие репозитории ({externalPrs} PR)"
                 : "Аудит не показал зрелых production-следов";
@@ -75,6 +85,7 @@ internal static class LevelSummaryFallbackBuilder
         ProgrammerLevelInfo level,
         string title,
         int productionCount,
+        int ossUtilityCount,
         int externalPrs,
         string? focus,
         string topLang)
@@ -85,6 +96,8 @@ internal static class LevelSummaryFallbackBuilder
 
         var auditLine = productionCount > 0
             ? $"Architecture audit surfaced {productionCount} production project(s)"
+            : ossUtilityCount > 0 && profile.TotalStars >= 500
+                ? $"Audit covers {ossUtilityCount} CLI/DevOps utility project(s); enterprise Production criteria do not apply"
             : externalPrs > 0
                 ? $"No production class in audit, but external contributions ({externalPrs} PRs) add signal"
                 : "Audit did not surface mature production footprints";

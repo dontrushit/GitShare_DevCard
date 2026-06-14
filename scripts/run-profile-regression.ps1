@@ -147,6 +147,11 @@ foreach ($entry in $profiles) {
                 $issues.Add("$($rule.repo).debt missing '$debt'")
             }
         }
+        foreach ($debt in @($rule.debtMustNotContain | Where-Object { $_ })) {
+            if ($p.TechnicalDebt -match [regex]::Escape($debt)) {
+                $issues.Add("$($rule.repo).debt must not contain '$debt'")
+            }
+        }
     }
 
     foreach ($bad in @($entry.forbidProsContaining | Where-Object { $_ })) {
@@ -195,8 +200,51 @@ foreach ($entry in $profiles) {
 }
 
 $reportPath = Join-Path $PSScriptRoot "regression-report.json"
-$results | ConvertTo-Json -Depth 5 | Set-Content $reportPath -Encoding utf8
+$passed = $results.Count - $failed
+$passRate = if ($results.Count -gt 0) { [math]::Round(100.0 * $passed / $results.Count, 1) } else { 0 }
 
-Write-Host "`n--- Summary: $($results.Count - $failed)/$($results.Count) passed, $failed failed ---" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Yellow" })
+$cohortByUser = @{}
+foreach ($p in $profiles) { $cohortByUser[$p.username] = $p.cohort }
+$byCohort = $results | Group-Object { if ($cohortByUser.ContainsKey($_.User)) { $cohortByUser[$_.User] } else { "unknown" } }
+$cohortStats = foreach ($g in $byCohort) {
+    $cohortName = if ($g.Name) { $g.Name } else { "unknown" }
+    $cohortFailed = @($g.Group | Where-Object { -not $_.Ok }).Count
+    [pscustomobject]@{
+        cohort = $cohortName
+        total = $g.Count
+        passed = $g.Count - $cohortFailed
+        failed = $cohortFailed
+    }
+}
+
+$byWave = $results | Group-Object Wave | Sort-Object { [int]$_.Name }
+$waveStats = foreach ($g in $byWave) {
+    $waveFailed = @($g.Group | Where-Object { -not $_.Ok }).Count
+    [pscustomobject]@{
+        wave = [int]$g.Name
+        total = $g.Count
+        passed = $g.Count - $waveFailed
+        failed = $waveFailed
+    }
+}
+
+$report = [pscustomobject]@{
+    generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+    summary = [pscustomobject]@{
+        total = $results.Count
+        passed = $passed
+        failed = $failed
+        passRatePercent = $passRate
+    }
+    byCohort = $cohortStats
+    byWave = $waveStats
+    results = $results
+}
+
+$report | ConvertTo-Json -Depth 6 | Set-Content $reportPath -Encoding utf8
+
+Write-Host "`n--- Summary: $passed/$($results.Count) passed ($passRate%), $failed failed ---" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Yellow" })
+Write-Host "By cohort:" -ForegroundColor Cyan
+$cohortStats | ForEach-Object { Write-Host "  $($_.cohort): $($_.passed)/$($_.total)" }
 Write-Host "Report: $reportPath"
 exit $failed

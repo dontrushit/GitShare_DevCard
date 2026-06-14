@@ -33,8 +33,13 @@ internal static class AuditPrompts
         - TechnicalDebt: конкретный пробел или контекст класса (для Utility/QA — описание формата, не enterprise-претензии).
         - InterviewTrapQuestion: острый вопрос кандидату по КЛАССУ проекта (для DocOps — про знания, для QA — про тесты, для Production — про архитектуру).
 
+        SERVER VERIFIED FACTS (приоритет над догадками):
+        - Блок SERVER VERIFIED FACTS — JSON с проверенными сигналами кода и Pros/Cons с сервера. Считайте его авторитетным.
+        - Не противоречьте VerifiedPros/VerifiedCons и CodeSignals без явного подтверждения в KeyFilesContent.
+        - Pros/Cons в ответе JSON не включайте (заполняются сервером). Синтезируйте ArchitectureSummary, TechnicalDebt, KeyRisks и InterviewTrapQuestion по фактам.
+
         KEY FILES CONTENT (обязательно учитывать для Production App):
-        - В каждом блоке REPOSITORY FORENSICS может быть JSON-массив KeyFilesContent: [{ "FileName", "Content" }] — реальный усечённый исходник (до ~3000 символов на файл).
+        - В каждом блоке REPOSITORY FORENSICS может быть JSON-массив KeyFilesContent: [{ "FileName", "Content" }] — реальный усечённый исходник (до ~1800 символов на файл).
         - Если в дереве подозрительное имя (DbHelper.cs, *Helper*, Utils), но в KeyFilesContent код чистый (абстракции, DI, SRP соблюдены) — ИГНОРИРУЙТЕ эвристику по имени. Снижайте DebtSeverity.
         - Предупреждения по архитектуре выносите ТОЛЬКО если Content подтверждает проблему: жёсткие зависимости, static/global state, God-object, отсутствие DI при явном new/OleDb в коде.
         - Если KeyFilesContent пуст — опирайтесь на TARGET FILE SIGNATURES и ProjectClass; не выдумывайте детали реализации.
@@ -52,27 +57,34 @@ internal static class AuditPrompts
 
         Вывод: только чистый JSON, без markdown. Экранируйте кавычки в строках (\\").
 
+        ПРАВИЛО 5: ГЛУБИНА АРХИТЕКТУРЫ (главный выход модели)
+        - ArchitectureSummary: 2–4 предложения по-русски — границы слоёв, направление зависимостей, зрелость стека, что видно в KeyFilesContent.
+        - ЗАПРЕЩЕНО в ArchitectureSummary: чеклист «есть async/await», «есть Services/», пересказ README без сверки с кодом.
+        - ЗАПРЕЩЕНО: «зрелая/масштабируемая архитектура», «полноценное приложение», оценочные прилагательные без цитаты из KeyFilesContent.
+        - Пишите нейтрально: что связано с чем (UI→DbHelper, API→Services→Repository), какие границы нарушены или соблюдены.
+        - KeyRisks: массив до 3 строк — только подтверждённые архитектурные риски (связность, static state, отсутствие абстракций при OleDb/DbHelper в коде).
+        - Уровень репозитория (junior/middle/…) считает сервер — не выдумывайте грейд в тексте.
+
         JSON Schema:
         {
           "Projects": [{
             "RepoName", "ProjectClass", "Framework", "LayoutType",
             "KeyFiles": ["file1","file2"],
-            "TechnicalDebt", "DebtSeverity", "InterviewTrapQuestion"
+            "ArchitectureSummary", "TechnicalDebt", "DebtSeverity",
+            "KeyRisks": ["риск1","риск2"],
+            "InterviewTrapQuestion"
           }],
-          "CoreEngineeringFocus": "одно предложение по-русски — доминирующий микс стеков",
-          "GitFormatStandard": "ровно одно из: Conventional Commits compliant | Descriptive / Non-standard | Unstructured / Low-density",
-          "ExperienceProfile": "одно предложение по COMMIT ACTIVITY: % working-hours vs off-hours",
-          "OpenSourceImpact": "факты из OPEN SOURCE или «No significant open-source footprint»"
+          "CoreEngineeringFocus": "одно предложение по-русски — доминирующий микс стеков"
         }
 
-        COMMIT ACTIVITY: GitFormatStandard и ExperienceProfile — только по телеметрии коммитов, без эмоций.
-        Один Projects на каждый блок TARGET FILE SIGNATURES. Pros/Cons не включайте (заполняются на сервере).
+        Один Projects на каждый блок REPOSITORY FORENSICS в payload (до 3 репо). Pros/Cons не включайте.
+        GitFormatStandard, ExperienceProfile, OpenSourceImpact не включайте — заполняет сервер из телеметрии.
         Не утверждайте async/await, try/catch, DI без KeyFilesContent или имён в сигнатурах.
 
-        ПРАВИЛО ДЛЯ CONS (сервер заполняет массив Cons отдельно — не дублируйте в TechnicalDebt):
-        - В Cons — ТОЛЬКО реальные проблемы структуры, топологии папок или архитектурные риски, подтверждённые сигнатурами/KeyFilesContent.
-        - ЗАПРЕЩЕНО: «содержимое не читалось», «анализ только по дереву», «не удалось проанализировать код», любые оправдания ограничений системы.
-        - DocOps / Utility / QA без явных косяков в дереве → Cons на сервере будут пустыми; не выдумывайте enterprise-замечания.
+        ПРАВИЛО ДЛЯ KeyRisks:
+        - Только реальные проблемы структуры или архитектуры, подтверждённые сигнатурами/KeyFilesContent.
+        - ЗАПРЕЩЕНО: «содержимое не читалось», «анализ только по дереву», оправдания ограничений системы.
+        - DocOps / Utility / QA без явных косяков → KeyRisks = [].
         """;
 
     private const string JsonAuditSystemPromptEn = """
@@ -102,8 +114,12 @@ internal static class AuditPrompts
         - Telegraphic neutral facts: pattern, stack, gap — no HR coaching.
         - InterviewTrapQuestion: sharp interview question matched to project class.
 
+        SERVER VERIFIED FACTS (priority over guesses):
+        - SERVER VERIFIED FACTS is authoritative JSON from static code scan. Do not contradict VerifiedPros/VerifiedCons or CodeSignals without KeyFilesContent proof.
+        - Do not include Pros/Cons in JSON output (server-filled). Synthesize ArchitectureSummary, TechnicalDebt, KeyRisks, and InterviewTrapQuestion from facts.
+
         KEY FILES CONTENT (Production App):
-        - KeyFilesContent may contain truncated source. If tree suggests *Helper* but content is clean (DI, abstractions) — lower DebtSeverity.
+        - KeyFilesContent may contain truncated source (up to ~1800 chars/file). If tree suggests *Helper* but content is clean (DI, abstractions) — lower DebtSeverity.
         - Architecture warnings only when content confirms: tight coupling, static/global state, god object, missing DI with explicit `new` in code.
 
         EVIDENCE (required or server rejects):
@@ -114,21 +130,31 @@ internal static class AuditPrompts
 
         Output: pure JSON only, no markdown. Escape quotes in strings (\\").
 
+        RULE 5: ARCHITECTURE DEPTH (primary model output)
+        - ArchitectureSummary: 2–4 English sentences — layer boundaries, dependency direction, stack maturity, what KeyFilesContent shows.
+        - FORBIDDEN in ArchitectureSummary: checklist items like "has async/await", "has Services/", README paraphrase without code cross-check.
+        - FORBIDDEN: "mature/scalable architecture", "full-fledged app", subjective praise without KeyFilesContent proof.
+        - Neutral tone: what connects to what (UI→DbHelper, API→Services→Repository), which boundaries hold or break.
+        - KeyRisks: up to 3 strings — confirmed architectural risks only (coupling, static state, missing abstractions when OleDb/DbHelper appears in code).
+        - Repository grade is computed server-side — do not invent junior/middle labels in prose.
+
         JSON Schema:
         {
           "Projects": [{
             "RepoName", "ProjectClass", "Framework", "LayoutType",
             "KeyFiles": ["file1","file2"],
-            "TechnicalDebt", "DebtSeverity", "InterviewTrapQuestion"
+            "ArchitectureSummary", "TechnicalDebt", "DebtSeverity",
+            "KeyRisks": ["risk1","risk2"],
+            "InterviewTrapQuestion"
           }],
-          "CoreEngineeringFocus": "one English sentence — dominant stack mix",
-          "GitFormatStandard": "exactly one of: Conventional Commits compliant | Descriptive / Non-standard | Unstructured / Low-density",
-          "ExperienceProfile": "one English sentence from COMMIT ACTIVITY: % working-hours vs off-hours",
-          "OpenSourceImpact": "facts from OPEN SOURCE or \"No significant open-source footprint\""
+          "CoreEngineeringFocus": "one English sentence — dominant stack mix"
         }
 
-        One Projects entry per TARGET FILE SIGNATURES block. Do not include Pros/Cons (filled server-side).
+        One Projects entry per REPOSITORY FORENSICS block in payload (up to 3 repos). Do not include Pros/Cons.
+        Omit GitFormatStandard, ExperienceProfile, OpenSourceImpact — server fills from telemetry.
         Do not claim async/await, try/catch, DI without KeyFilesContent or signature names.
+
+        KeyRisks: confirmed structural/architecture issues only; no meta excuses about limited analysis.
 
         RULE 4: README vs STRUCTURE
         - README excerpts may claim SOLID, Clean Architecture, MVVM, DI. Cross-check TARGET FILE SIGNATURES and KeyFilesContent.

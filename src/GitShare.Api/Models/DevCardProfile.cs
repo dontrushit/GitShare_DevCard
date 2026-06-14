@@ -24,6 +24,12 @@ public class DevCardProfile
     public List<HourlyActivity> CommitRhythm { get; set; } = [];
     public List<RepoSummary> TopRepositories { get; set; } = [];
     public ProgrammerLevelInfo ProgrammerLevel { get; set; } = new();
+
+    /// <summary>UTC-время последнего анализа (для отображения свежести кэша).</summary>
+    public DateTime? AnalyzedAtUtc { get; set; }
+
+    /// <summary>true — ответ из кэша; false — полный pipeline только что.</summary>
+    public bool ServedFromCache { get; set; }
 }
 
 public class LanguageMetric

@@ -112,11 +112,19 @@ internal static class ReadmeStructureVerifier
             : $"{technicalDebt.TrimEnd()} {analysis.MismatchNote}";
     }
 
-    private static bool IsDesktopStack(string combined) =>
-        combined.Contains("WinForms", StringComparison.OrdinalIgnoreCase) ||
-        combined.Contains("WPF", StringComparison.OrdinalIgnoreCase) ||
-        (combined.Contains("Console", StringComparison.OrdinalIgnoreCase) &&
-         combined.Contains(".csproj", StringComparison.OrdinalIgnoreCase));
+    private static bool IsDesktopStack(string combined)
+    {
+        if (ProjectClassClassifier.ManifestDescribesWebApi(combined) ||
+            combined.Contains("Web API + SPA", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return combined.Contains("WinForms", StringComparison.OrdinalIgnoreCase) ||
+               combined.Contains("WPF", StringComparison.OrdinalIgnoreCase) ||
+               (combined.Contains("Console Utility", StringComparison.OrdinalIgnoreCase) &&
+                combined.Contains(".csproj", StringComparison.OrdinalIgnoreCase));
+    }
 
     private static bool HasEnterpriseStructureSignals(string combined)
     {

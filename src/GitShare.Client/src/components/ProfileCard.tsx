@@ -1,7 +1,9 @@
 import { FolderGit2, MapPin, Star } from 'lucide-react';
 import type { DevCardProfile } from '../types';
 import { useLocale, useLevelTitle } from '../i18n/LocaleProvider';
+import { LowConfidenceNotice } from './LowConfidenceNotice';
 import { ProfileAnalysisDisclaimer } from './ProfileAnalysisDisclaimer';
+import { ProfileCacheBanner } from './ProfileCacheBanner';
 import { HoverPortalPopover } from './ui/HoverPortalPopover';
 
 interface ProfileCardProps {
@@ -201,6 +203,8 @@ export function ProfileCard({
             profile={profile}
             className="mt-1.5 text-xs leading-relaxed text-foreground/80"
           />
+          <LowConfidenceNotice profile={profile} compact />
+          <ProfileCacheBanner profile={profile} compact />
           {profile.Location ? (
             <p className="mt-1 flex items-center gap-1 text-xs text-foreground/60">
               <MapPin className="h-3 w-3 shrink-0" />
@@ -273,6 +277,8 @@ export function ProfileCard({
               prominentHeader ? 'text-sm' : 'text-xs'
             }`}
           />
+          <LowConfidenceNotice profile={profile} compact={!prominentHeader} />
+          <ProfileCacheBanner profile={profile} compact={!prominentHeader} />
           {profile.Location ? (
             <p
               className={`mt-1 flex items-center gap-1 text-zinc-500 ${
