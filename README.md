@@ -1,5 +1,7 @@
 # GitShare DevCard
 
+[![CI](https://github.com/dontrushit/GitShare_DevCard/actions/workflows/ci.yml/badge.svg)](https://github.com/dontrushit/GitShare_DevCard/actions/workflows/ci.yml)
+
 A site that looks at a public GitHub profile: languages, repos, how the code is put together, rough level. UI in RU/EN.
 
 Stack: ASP.NET Core 8 + React. Audit text can go through GitHub Models. No key is fine: it just reads the files.

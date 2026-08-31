@@ -316,7 +316,7 @@ internal static class StructuredAuditBuilder
     private static List<string> SanitizeProsConsForClass(
         List<string> items,
         string projectClass,
-        IReadOnlyList<string> keyFiles,
+        IReadOnlyList<string>? keyFiles,
         bool isPros)
     {
         if (!isPros)
@@ -334,7 +334,7 @@ internal static class StructuredAuditBuilder
             return items;
         }
 
-        return ProjectClassProsCons.GetContextualPros(projectClass, string.Empty, keyFiles, string.Empty);
+        return ProjectClassProsCons.GetContextualPros(projectClass, string.Empty, keyFiles ?? [], string.Empty);
     }
 
     private static List<string> BuildPros(string manifest)
