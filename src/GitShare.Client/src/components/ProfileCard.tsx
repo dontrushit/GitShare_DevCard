@@ -148,14 +148,18 @@ function StatTile({
   label,
   value,
   compact = false,
+  className = '',
 }: {
   label: string;
   value: string | number;
   compact?: boolean;
+  className?: string;
 }) {
   if (compact) {
     return (
-      <div className="rounded-md border border-zinc-800/80 bg-zinc-950/40 px-2.5 py-2">
+      <div
+        className={`rounded-md border border-zinc-800/80 bg-zinc-950/40 px-2.5 py-2 ${className}`.trim()}
+      >
         <p className="text-[10px] font-medium uppercase leading-tight tracking-wide text-zinc-500">
           {label}
         </p>
@@ -165,7 +169,7 @@ function StatTile({
   }
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2.5">
+    <div className={`rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2.5 ${className}`.trim()}>
       <p className="text-[10px] uppercase tracking-wide text-zinc-600">{label}</p>
       <p className="mt-0.5 text-sm font-medium text-zinc-200">{value}</p>
     </div>
@@ -182,6 +186,48 @@ export function ProfileCard({
   const isDesktop = variant === 'desktop';
   const prominentHeader = isDesktop && embedded;
   const { t } = useLocale();
+
+  const desktopStatTiles: Array<{ key: string; label: string; value: string | number }> = [];
+  if (isDesktop) {
+    if (profile.PublicRepos > 0) {
+      desktopStatTiles.push({
+        key: 'repos',
+        label: t('profile.stats.repos'),
+        value: profile.PublicRepos,
+      });
+    }
+    if (profile.TotalStars > 0) {
+      desktopStatTiles.push({
+        key: 'stars',
+        label: t('profile.stats.stars'),
+        value: profile.TotalStars.toLocaleString(),
+      });
+    }
+    if (profile.TotalForks > 0) {
+      desktopStatTiles.push({
+        key: 'forks',
+        label: t('profile.stats.totalForks'),
+        value: profile.TotalForks.toLocaleString(),
+      });
+    }
+    if (profile.ProductionScaleProjects > 0) {
+      desktopStatTiles.push({
+        key: 'large-projects',
+        label: t('profile.stats.largeProjects'),
+        value: profile.ProductionScaleProjects,
+      });
+    }
+    if (ownPercent > 0) {
+      desktopStatTiles.push({
+        key: 'own-share',
+        label: t('profile.stats.ownShare', { percent: ownPercent }),
+        value: t('profile.stats.ownForkValue', {
+          own: profile.OwnRepositoryCount,
+          forks: profile.ForkedRepositoryCount,
+        }),
+      });
+    }
+  }
 
   if (!isDesktop) {
     return (
@@ -235,17 +281,11 @@ export function ProfileCard({
           : 'h-full rounded-xl border border-zinc-800 bg-zinc-900/40 p-4'
       } ${className}`.trim()}
     >
-      <div
-        className={`flex shrink-0 border-b border-zinc-800/80 ${
-          prominentHeader ? 'gap-4 pb-3' : 'gap-4 pb-3'
-        }`}
-      >
+      <div className="flex shrink-0 gap-4 border-b border-zinc-800/80 pb-3">
         <img
           src={profile.AvatarUrl}
           alt={profile.Username}
-          className={`shrink-0 rounded-full border border-zinc-700 object-cover ${
-            prominentHeader ? 'h-20 w-20' : 'h-16 w-16'
-          }`}
+          className="h-16 w-16 shrink-0 rounded-full border border-zinc-700 object-cover"
         />
         <div className="min-w-0 flex-1">
           <div
@@ -261,7 +301,9 @@ export function ProfileCard({
               {profile.Username}
             </h2>
             <ProgrammerLevelBadge profile={profile} size={prominentHeader ? 'lg' : 'default'} />
+            <ProfileAnalysisDisclaimer iconOnly />
           </div>
+          <LowConfidenceNotice profile={profile} inline />
           {profile.Bio ? (
             <p
               className={`mt-0.5 line-clamp-1 leading-snug text-zinc-400 ${
@@ -271,13 +313,6 @@ export function ProfileCard({
               {profile.Bio}
             </p>
           ) : null}
-          <LevelAssessmentSummary
-            profile={profile}
-            className={`mt-1.5 leading-relaxed text-zinc-300 ${
-              prominentHeader ? 'text-sm' : 'text-xs'
-            }`}
-          />
-          <LowConfidenceNotice profile={profile} compact={!prominentHeader} />
           <ProfileCacheBanner profile={profile} compact={!prominentHeader} />
           {profile.Location ? (
             <p
@@ -289,29 +324,22 @@ export function ProfileCard({
               <span className="truncate">{profile.Location}</span>
             </p>
           ) : null}
-          <ProfileAnalysisDisclaimer dense prominent={prominentHeader} />
         </div>
       </div>
 
-      <div className="mt-2.5 grid shrink-0 grid-cols-2 grid-rows-3 gap-1.5">
-        <StatTile compact label={t('profile.stats.repos')} value={profile.PublicRepos} />
-        <StatTile compact label={t('profile.stats.stars')} value={profile.TotalStars.toLocaleString()} />
-        <StatTile compact label={t('profile.stats.totalForks')} value={profile.TotalForks.toLocaleString()} />
-        <StatTile compact label={t('profile.stats.largeProjects')} value={profile.ProductionScaleProjects} />
-        <StatTile
-          compact
-          label={t('profile.stats.petMed')}
-          value={`${profile.SmallPetProjects} / ${profile.MediumProjects}`}
-        />
-        <StatTile
-          compact
-          label={t('profile.stats.ownShare', { percent: ownPercent })}
-          value={t('profile.stats.ownForkValue', {
-            own: profile.OwnRepositoryCount,
-            forks: profile.ForkedRepositoryCount,
-          })}
-        />
-      </div>
+      {desktopStatTiles.length > 0 ? (
+        <div className="mt-2.5 flex shrink-0 flex-wrap gap-1.5">
+          {desktopStatTiles.map((tile) => (
+            <StatTile
+              key={tile.key}
+              compact
+              className="min-w-[6.5rem] flex-1"
+              label={tile.label}
+              value={tile.value}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

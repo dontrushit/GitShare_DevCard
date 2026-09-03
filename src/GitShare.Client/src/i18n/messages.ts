@@ -34,12 +34,13 @@ const ru = {
   },
   profile: {
     disclaimer:
-      'Профиль сформирован на основе эвристического анализа открытых репозиториев. Система оценивает публичный Git-акцент разработчика, что может не отражать его реальную коммерческую должность или опыт работы в закрытых enterprise-системах.',
+      'Профиль сформирован на основе анализа открытых репозиториев. Система оценивает публичный Git-акцент разработчика, что может не отражать его реальную коммерческую должность или опыт работы в закрытых enterprise-системах.',
     disclaimerAria: 'Ограничения анализа профиля',
     levelLadder: 'Шкала уровней',
     lowConfidence: 'Низкая уверенность',
     lowConfidenceBanner:
       'Уровень с пониженной уверенностью (×{{value}}): мало публичных сигналов — ориентируйтесь на аудит репозиториев, а не только на бейдж.',
+    lowConfidenceShort: 'Низкая уверенность (×{{value}})',
     lowConfidenceSuffix: ' · низкая уверенность ×{{value}}',
     cacheFresh: 'Обновлено {{date}}',
     cacheFromCache: 'Из кэша · {{date}} · нажмите «Обновить» для свежих данных',
@@ -74,7 +75,7 @@ const ru = {
     singleLangNote: 'Весь проанализированный портфель написан на одном языке.',
   },
   desktop: {
-    architecturePassport: 'Архитектурный паспорт',
+    architecturePassport: 'Репозитории',
     architectureQuality: 'Анализ архитектуры и качества кода',
     interviewQuestions: 'Вопросы для технического интервью',
   },
@@ -178,12 +179,13 @@ const en = {
   },
   profile: {
     disclaimer:
-      'This profile is built from heuristic analysis of public repositories. It reflects the developer’s public Git footprint and may not match their actual role or experience in private enterprise systems.',
+      'This profile is built from analysis of public repositories. It reflects the developer’s public Git footprint and may not match their actual role or experience in private enterprise systems.',
     disclaimerAria: 'Profile analysis limitations',
     levelLadder: 'Level scale',
     lowConfidence: 'Low confidence',
     lowConfidenceBanner:
       'Level with reduced confidence (×{{value}}): few public signals — weigh the repo audit, not only the badge.',
+    lowConfidenceShort: 'Low confidence (×{{value}})',
     lowConfidenceSuffix: ' · low confidence ×{{value}}',
     cacheFresh: 'Updated {{date}}',
     cacheFromCache: 'From cache · {{date}} · click Refresh for live data',
@@ -218,7 +220,7 @@ const en = {
     singleLangNote: 'The entire analyzed portfolio uses a single language.',
   },
   desktop: {
-    architecturePassport: 'Architecture passport',
+    architecturePassport: 'Repositories',
     architectureQuality: 'Architecture & code quality',
     interviewQuestions: 'Technical interview questions',
   },

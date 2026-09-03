@@ -5,9 +5,14 @@ import { useLocale } from '../i18n/LocaleProvider';
 interface LowConfidenceNoticeProps {
   profile: DevCardProfile;
   compact?: boolean;
+  inline?: boolean;
 }
 
-export function LowConfidenceNotice({ profile, compact = false }: LowConfidenceNoticeProps) {
+export function LowConfidenceNotice({
+  profile,
+  compact = false,
+  inline = false,
+}: LowConfidenceNoticeProps) {
   const { t } = useLocale();
   const level = profile.ProgrammerLevel;
 
@@ -17,6 +22,21 @@ export function LowConfidenceNotice({ profile, compact = false }: LowConfidenceN
 
   const confidence =
     level.SignalConfidence != null ? level.SignalConfidence.toFixed(2) : undefined;
+
+  if (inline) {
+    return (
+      <p
+        className="mt-1 flex max-w-full items-center gap-1 text-[10px] leading-snug text-amber-200/80"
+        role="note"
+        aria-label={t('profile.lowConfidence')}
+      >
+        <AlertTriangle className="h-3 w-3 shrink-0 text-amber-500/90" aria-hidden />
+        <span className="truncate">
+          {t('profile.lowConfidenceShort', { value: confidence ?? '—' })}
+        </span>
+      </p>
+    );
+  }
 
   return (
     <aside

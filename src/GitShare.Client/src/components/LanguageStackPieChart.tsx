@@ -138,19 +138,6 @@ function LanguageTooltip({
   );
 }
 
-function LegendChip({ slice, isPrimary }: { slice: PieSlice; isPrimary: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-800/80 bg-zinc-950/50 px-2 py-1 text-[10px]">
-      <span
-        className="h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: slice.color, boxShadow: `0 0 8px ${slice.glow}` }}
-      />
-      <span className={isPrimary ? 'font-medium text-zinc-200' : 'text-zinc-400'}>{slice.name}</span>
-      <span className="tabular-nums text-zinc-500">{formatLanguagePercent(slice.value)}%</span>
-    </span>
-  );
-}
-
 function LegendRow({ slice, isPrimary }: { slice: PieSlice; isPrimary: boolean }) {
   return (
     <li className="space-y-1">
@@ -282,7 +269,6 @@ export function LanguageStackPieChart({
     innerRadius: isCompact ? 34 : 40,
     outerRadius: isCompact ? 52 : 62,
   };
-  const stackedPieRadii = { innerRadius: '56%', outerRadius: '90%' };
 
   if (slices.length === 0) {
     return (
@@ -316,28 +302,11 @@ export function LanguageStackPieChart({
         </header>
 
       {useStackedLayout ? (
-        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-2 overflow-hidden">
-          <div className="relative z-10 flex shrink-0 flex-wrap gap-1 content-start">
-            {slices.map((slice, index) => (
-              <LegendChip key={slice.name} slice={slice} isPrimary={index === 0} />
-            ))}
-          </div>
-
-          <div className="relative z-0 min-h-0 overflow-hidden">
-            <div className="flex h-full min-h-0 items-center justify-center">
-              <div className="aspect-square h-[min(100%,16.25rem)] w-[min(100%,16.25rem)] max-h-full max-w-full min-h-0 min-w-0">
-                <DonutChart
-                  slices={slices}
-                  primary={primary}
-                  multiSlice={multiSlice}
-                  pieRadii={stackedPieRadii}
-                  className="h-full w-full"
-                  {...donutLabels}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <ul className="custom-scrollbar min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
+          {slices.map((slice, index) => (
+            <LegendRow key={slice.name} slice={slice} isPrimary={index === 0} />
+          ))}
+        </ul>
       ) : (
         <div className={`flex min-h-0 items-center gap-4 ${fillHeight ? 'flex-1' : ''} ${isCompact ? '' : 'gap-5'}`}>
           <DonutChart
