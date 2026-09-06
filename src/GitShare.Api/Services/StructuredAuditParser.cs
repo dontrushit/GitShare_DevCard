@@ -104,6 +104,7 @@ internal static partial class StructuredAuditParser
             }
 
             ApplyLegacyFieldAliases(json, parsed);
+            ApplyKeyRisksFromRawPayload(json, parsed);
             return StructuredAuditBuilder.Normalize(parsed, locale);
         }
         catch (JsonException)
@@ -138,6 +139,98 @@ internal static partial class StructuredAuditParser
         {
             /* ignore */
         }
+    }
+
+    /// <summary>
+    /// KeyRisks помечен [JsonIgnore], чтобы не уезжать клиенту, — десериализатор его тоже пропускает.
+    /// Поэтому риски достаём из сырого JSON и сопоставляем с проектами по RepoName.
+    /// </summary>
+    private static void ApplyKeyRisksFromRawPayload(string json, StructuredAuditResponse parsed)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (!TryGetPropertyIgnoreCase(document.RootElement, "Projects", out var projects) ||
+                projects.ValueKind != JsonValueKind.Array)
+            {
+                return;
+            }
+
+            var parsedByRepo = parsed.Projects
+                .Where(p => !string.IsNullOrWhiteSpace(p.RepoName))
+                .GroupBy(p => p.RepoName.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var rawProject in projects.EnumerateArray())
+            {
+                if (!TryGetPropertyIgnoreCase(rawProject, "RepoName", out var rawName) ||
+                    rawName.ValueKind != JsonValueKind.String)
+                {
+                    continue;
+                }
+
+                var repoName = rawName.GetString()?.Trim();
+                if (string.IsNullOrWhiteSpace(repoName) ||
+                    !parsedByRepo.TryGetValue(repoName, out var target) ||
+                    !TryGetPropertyIgnoreCase(rawProject, "KeyRisks", out var rawRisks))
+                {
+                    continue;
+                }
+
+                var risks = ExtractStringList(rawRisks);
+                if (risks.Count > 0)
+                {
+                    target.KeyRisks = risks;
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            /* KeyRisks необязательны: при битом JSON остаются пустыми */
+        }
+    }
+
+    private static List<string> ExtractStringList(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            var single = element.GetString()?.Trim();
+            return string.IsNullOrWhiteSpace(single) ? [] : [single];
+        }
+
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return element
+            .EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString()?.Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s!)
+            .ToList();
+    }
+
+    private static bool TryGetPropertyIgnoreCase(
+        JsonElement element,
+        string propertyName,
+        out JsonElement value)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+        }
+
+        value = default;
+        return false;
     }
 
     private static string ExtractJsonPayload(string content)

@@ -40,12 +40,15 @@ export interface ProjectAuditDetail {
   ArchitectureSummary?: string;
 }
 
+export type AuditSource = 'rules' | 'model';
+
 export interface StructuredAuditResponse {
   Projects: ProjectAuditDetail[];
   CoreEngineeringFocus: string;
   GitFormatStandard?: string;
   ExperienceProfile?: string;
   OpenSourceImpact?: string;
+  AuditSource?: AuditSource;
 }
 
 export interface GitHubActivityTelemetry {

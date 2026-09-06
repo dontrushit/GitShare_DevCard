@@ -37,11 +37,16 @@ function DesktopBentoSkeleton() {
   );
 }
 
-function PanelTitle({ children }: { children: ReactNode }) {
+function PanelTitle({ children, subtitle }: { children: ReactNode; subtitle?: string }) {
   return (
-    <h3 className="shrink-0 border-b border-zinc-800/80 px-5 py-3.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-      {children}
-    </h3>
+    <div className="shrink-0 border-b border-zinc-800/80 px-5 py-3.5">
+      <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+        {children}
+      </h3>
+      {subtitle ? (
+        <p className="mt-1 text-[10px] normal-case tracking-normal text-zinc-600">{subtitle}</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -63,6 +68,13 @@ export function DesktopBentoGrid({ profile, auditData, isLoading = false }: Desk
   }
 
   const hasLanguages = profile.LanguageStack.length > 0;
+  const auditSource = auditData?.AuditSource;
+  const auditSourceLabel =
+    auditSource === 'rules'
+      ? t('desktop.auditSourceRules')
+      : auditSource === 'model'
+        ? t('desktop.auditSourceModel')
+        : undefined;
 
   return (
     <div className={BENTO_GRID}>
@@ -93,7 +105,7 @@ export function DesktopBentoGrid({ profile, auditData, isLoading = false }: Desk
 
           <section className="grid min-h-0 min-w-0 grid-rows-2 gap-4">
             <div className={`${PANEL_SHELL} min-h-0`}>
-              <PanelTitle>{t('desktop.architectureQuality')}</PanelTitle>
+              <PanelTitle subtitle={auditSourceLabel}>{t('desktop.architectureQuality')}</PanelTitle>
               <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-1">
                 <DebtPanel projects={projects} />
               </div>

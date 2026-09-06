@@ -28,7 +28,7 @@ internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> log
             AiModelsRateLimitException => (
                 StatusCodes.Status429TooManyRequests,
                 "AI rate limit",
-                "GitHub Models API rate limit exceeded. Please try again later."),
+                "AI model API rate limit exceeded. Please try again later."),
             AiBridgeException bridge => (
                 bridge.StatusCode is > 0 and var code ? code : StatusCodes.Status502BadGateway,
                 "AI bridge error",

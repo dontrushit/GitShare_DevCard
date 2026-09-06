@@ -123,7 +123,7 @@ public sealed class GitHubAnalyticsService(
         {
             logger.LogInformation(
                 "AI:ApiKey не настроен — rule-based аудит. Задайте user-secrets: AI:ApiKey");
-            return AuditEvidenceEnforcer.Apply(null, forensics, telemetry, contentLocale, profile.TotalStars);
+            return ApplyRuleBasedAudit(forensics, telemetry, contentLocale, profile.TotalStars);
         }
 
         var modelId = configuration["AI:ModelId"] ?? "gpt-4o";
@@ -146,7 +146,7 @@ public sealed class GitHubAnalyticsService(
             Model = modelId,
             Temperature = 0.0,
             MaxTokens = 2_560,
-            ResponseFormat = new ChatCompletionResponseFormat { Type = "json_object" },
+            ResponseFormat = ChatCompletionResponseFormat.ForAudit(baseUrl),
             Messages =
             [
                 new ChatCompletionMessage
@@ -185,7 +185,7 @@ public sealed class GitHubAnalyticsService(
             {
                 logger.LogWarning(
                     "Payload превышает лимит модели — rule-based аудит без LLM.");
-                return AuditEvidenceEnforcer.Apply(null, forensics, telemetry, contentLocale, profile.TotalStars);
+                return ApplyRuleBasedAudit(forensics, telemetry, contentLocale, profile.TotalStars);
             }
 
             throw new AiBridgeException($"AI Bridge Failed: {response.StatusCode}", (int)response.StatusCode);
@@ -208,7 +208,7 @@ public sealed class GitHubAnalyticsService(
         {
             var preview = content.Length > 400 ? content[..400] + "…" : content;
             logger.LogWarning("JSON parse failed, using forensics fallback. Preview: {Preview}", preview);
-            return AuditEvidenceEnforcer.Apply(null, forensics, telemetry, contentLocale, profile.TotalStars);
+            return ApplyRuleBasedAudit(forensics, telemetry, contentLocale, profile.TotalStars);
         }
 
         var focusPreview = parsed.CoreEngineeringFocus ?? "(нет)";
@@ -222,7 +222,21 @@ public sealed class GitHubAnalyticsService(
             parsed.Projects.Count,
             focusPreview);
 
-        return AuditEvidenceEnforcer.Apply(parsed, forensics, telemetry, contentLocale, profile.TotalStars);
+        var enforced = AuditEvidenceEnforcer.Apply(parsed, forensics, telemetry, contentLocale, profile.TotalStars);
+        enforced.AuditSource = AuditSources.Model;
+        return enforced;
+    }
+
+    /// <summary>Rule-based путь без модели: ответ помечается, чтобы UI не выдавал его за нейросеть.</summary>
+    internal static StructuredAuditResponse ApplyRuleBasedAudit(
+        IReadOnlyList<RepositoryForensics> forensics,
+        GitHubActivityTelemetry telemetry,
+        AuditContentLocale contentLocale,
+        int portfolioTotalStars)
+    {
+        var result = AuditEvidenceEnforcer.Apply(null, forensics, telemetry, contentLocale, portfolioTotalStars);
+        result.AuditSource = AuditSources.Rules;
+        return result;
     }
 
     private async Task<string> GenerateLevelAssessmentSummaryAsync(

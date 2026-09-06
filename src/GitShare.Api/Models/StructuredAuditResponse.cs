@@ -29,6 +29,19 @@ public class StructuredAuditResponse
 
     public string OpenSourceImpact { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Источник именно этого ответа: "rules" (без модели) или "model" (ответ LLM прошёл в enforcer).
+    /// Опционально: старые кэш-записи без поля не должны выдаваться за модель.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? AuditSource { get; set; }
+
+}
+
+public static class AuditSources
+{
+    public const string Rules = "rules";
+    public const string Model = "model";
 }
 
 

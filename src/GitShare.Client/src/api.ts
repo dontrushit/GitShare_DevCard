@@ -57,7 +57,7 @@ export function classifyProfileError(
     return 'force_refresh_rate_limit';
   }
 
-  if (hay.includes('github models') || hay.includes('ai rate limit') || hay.includes('ai bridge')) {
+  if (hay.includes('github models') || hay.includes('ai rate limit')) {
     return 'ai_rate_limit';
   }
 

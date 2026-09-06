@@ -260,7 +260,8 @@ internal static class StructuredAuditBuilder
                         project.KeyFiles,
                         isPros: false),
                     locale),
-                project.ProjectClass)
+                project.ProjectClass),
+            KeyRisks = project.KeyRisks ?? []
         };
 
     private static List<string> FilterBulletsForContentLocale(
